@@ -152,30 +152,75 @@ def get_topics_dict(topics_content):
     response = chat.send_message(topics_content)
     return json.loads(response.text)
 
+def create_diagram_model():
+    """Create a model specifically for generating Mermaid diagrams."""
+    diagram_config = {
+        "temperature": 1,
+        "top_p": 0.95,
+        "top_k": 40,
+        "max_output_tokens": 8192,
+        "response_mime_type": "text/plain",
+    }
+    
+    return genai.GenerativeModel(
+        model_name="gemini-2.0-flash-exp",
+        generation_config=diagram_config,
+        system_instruction="""adicione diagramas mermaid nos locais onde está escrito <imagem: ...> de forma a explicar os conceitos de uma forma concisa, aprofundada e didática sem perder detalhes
+
+diretvas para os diagramas:
+- foco na arquitetura
+- use aspas nos blocos de texto
+- evite usar losangos
+- evite mindmaps"""
+    )
+
+def create_section_directory(base_dir, section_name):
+    """Create and return the path to a section directory."""
+    safe_section_name = "".join(c for c in section_name if c.isalnum() or c in (' ', '-', '_')).strip()
+    section_dir = os.path.join(base_dir, f"01. {safe_section_name}")
+    os.makedirs(section_dir, exist_ok=True)
+    return section_dir
+
+def generate_topic_content(chat_session, topic):
+    """Generate initial content for a topic."""
+    return chat_session.send_message(topic)
+
+def add_diagrams_to_content(diagram_model, content):
+    """Process content to add Mermaid diagrams."""
+    diagram_chat = diagram_model.start_chat()
+    return diagram_chat.send_message(content.text)
+
+def save_topic_file(section_dir, topic, index, content):
+    """Save topic content to a file."""
+    safe_topic = "".join(c for c in topic.split('\n')[0] if c.isalnum() or c in (' ', '-', '_')).strip()
+    topic_filename = f"{index:02d}. {safe_topic[:50]}.md"
+    topic_path = os.path.join(section_dir, topic_filename)
+    
+    with open(topic_path, "w", encoding='utf-8') as f:
+        f.write(content.text)
+    return topic_filename
+
 def process_topic_section(chat_session, topics, section_name):
     """Process topics for a specific section and save individual topic files."""
     total_topics = len(topics)
     print(f"\nProcessing {total_topics} topics for section: {section_name}")
     
-    # Create section folder
-    safe_section_name = "".join(c for c in section_name if c.isalnum() or c in (' ', '-', '_')).strip()
-    section_dir = os.path.join(INPUT_DIR, f"01. {safe_section_name}")
-    os.makedirs(section_dir, exist_ok=True)
+    # Create models and directory
+    diagram_model = create_diagram_model()
+    section_dir = create_section_directory(INPUT_DIR, section_name)
     
     for i, topic in enumerate(topics, 1):
         print(f"\nTopic {i}/{total_topics}:")
         print(f"- {topic[:100]}...")
-        response = chat_session.send_message(topic)
         
-        # Create topic filename with padding
-        safe_topic = "".join(c for c in topic.split('\n')[0] if c.isalnum() or c in (' ', '-', '_')).strip()
-        topic_filename = f"{i:02d}. {safe_topic[:50]}.md"  # Limit topic name length
-        topic_path = os.path.join(section_dir, topic_filename)
+        # Generate and enhance content
+        initial_response = generate_topic_content(chat_session, topic)
+        print("Adding diagrams...")
+        final_response = add_diagrams_to_content(diagram_model, initial_response)
         
-        # Save individual topic file
-        with open(topic_path, "w", encoding='utf-8') as f:
-            f.write(response.text)
-        print(f"✓ Saved topic to: {topic_filename}")
+        # Save result
+        filename = save_topic_file(section_dir, topic, i, final_response)
+        print(f"✓ Saved topic with diagrams to: {filename}")
 
 def main():
     """Main execution flow."""
