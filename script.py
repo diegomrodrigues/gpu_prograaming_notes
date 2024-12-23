@@ -1,11 +1,12 @@
 import os
 import time
+import json
 import google.generativeai as genai
 
 # Constants
-INPUT_FILE = "01. Data Parallelism\Data Parallelism_64-85.pdf"
-OUTPUT_FILE = "01. Data Parallelism\02. CUDA Program Structure.md"
-PROMPT_FILE = "00. prompts\Resumo.md"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+INPUT_DIR = os.path.join(BASE_DIR, "01. Data Parallelism")
+PROMPT_FILE = os.path.join(BASE_DIR, "00. prompts", "Resumo.md")
 GEMINI_API_KEY = "AIzaSyCDzmg1GM54f05KqSxzx7266kzuEnFGCPs"  #os.environ["GEMINI_API_KEY"]
 
 # Model configuration
@@ -63,16 +64,17 @@ def create_model(prompt_file):
     return model
 
 def initialize_chat_session(model, files):
-    """Initialize a chat session with the given files."""
+    """Initialize a chat session with multiple files."""
     print("\nInitializing chat session...")
-    chat_session = model.start_chat(
-        history=[
-            {
-                "role": "user",
-                "parts": [files[0]],
-            },
-        ]
-    )
+    # Create initial history with all files
+    history = []
+    for file in files:
+        history.append({
+            "role": "user",
+            "parts": [file],
+        })
+    
+    chat_session = model.start_chat(history=history)
     print("✓ Chat session initialized")
     return chat_session
 
@@ -99,43 +101,107 @@ def save_output(content, output_file):
         f.write(content)
     print("✓ Output saved successfully")
 
+def get_pdf_files_in_dir(directory):
+    """Get all PDF files in the specified directory."""
+    pdf_files = []
+    for file in os.listdir(directory):
+        if file.lower().endswith('.pdf'):
+            pdf_files.append(os.path.join(directory, file))
+    return pdf_files
+
+def upload_multiple_files(file_paths):
+    """Upload multiple files to Gemini."""
+    uploaded_files = []
+    for path in file_paths:
+        uploaded_files.append(upload_to_gemini(path, mime_type="application/pdf"))
+    return uploaded_files
+
+def read_topics_file(directory):
+    """Read and find the topics.md file in the given directory."""
+    for file in os.listdir(directory):
+        if file.lower() == 'topics.md':
+            file_path = os.path.join(directory, file)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+    raise FileNotFoundError("topics.md not found in the specified directory")
+
+def get_topics_dict(topics_content):
+    """Convert topics content to dictionary using Gemini."""
+    # Configure model for JSON parsing
+    json_config = {
+        "temperature": 1,
+        "top_p": 0.95,
+        "top_k": 40,
+        "max_output_tokens": 8192,
+        "response_mime_type": "application/json",
+    }
+    
+    topics_model = genai.GenerativeModel(
+        model_name="gemini-2.0-flash-exp",
+        generation_config=json_config,
+        system_instruction="""given the topics, return it in a json format with the following template:
+        {
+        "topic_name": [ "topic 1", "topic 2", ... ],
+        "topic_name": [ "topic 1", "topic 2", ... ],
+        ...
+        }"""
+    )
+    
+    # Get JSON response
+    chat = topics_model.start_chat()
+    response = chat.send_message(topics_content)
+    return json.loads(response.text)
+
+def process_topic_section(chat_session, topics, section_name):
+    """Process topics for a specific section and return the content."""
+    sections = []
+    total_topics = len(topics)
+    print(f"\nProcessing {total_topics} topics for section: {section_name}")
+    
+    for i, topic in enumerate(topics, 1):
+        print(f"\nTopic {i}/{total_topics}:")
+        print(f"- {topic[:100]}...")
+        response = chat_session.send_message(topic)
+        sections.append(response.text)
+        print("✓ Response received")
+    
+    return "\n".join(sections)
+
 def main():
     """Main execution flow."""
     # Initialize Gemini
     init_gemini()
 
+    # Get input directory and find PDFs
+    pdf_files = get_pdf_files_in_dir(INPUT_DIR)
+    
+    if not pdf_files:
+        print("No PDF files found in the specified directory!")
+        return
+
     # Upload and process files
-    files = [upload_to_gemini(INPUT_FILE, mime_type="application/pdf")]
+    files = upload_multiple_files(pdf_files)
     wait_for_files_active(files)
 
     # Create model and chat session
     model = create_model(PROMPT_FILE)
     chat_session = initialize_chat_session(model, files)
 
-    # Process topics
-    sections = process_topics(chat_session, TOPICS)
-    
-    # Save results
-    full_markdown = "\n".join(sections)
-    save_output(full_markdown, OUTPUT_FILE)
+    # Get topics dictionary
+    topics_content = read_topics_file(INPUT_DIR)
+    topics_dict = get_topics_dict(topics_content)
 
-# Move topics list to top-level constant
-TOPICS = [
-    "Host-Device Model in CUDA: The fundamental architectural separation between the host (CPU) and one or more devices (GPUs) in a CUDA environment.",
-    "Mixed Host and Device Code: The ability to integrate both CPU and GPU code within a single CUDA source file.",
-    "Default Host Code: The interpretation of standard C code within a CUDA program as code intended for CPU execution.",
-    "CUDA Keywords for Device Constructs: The use of specific keywords to identify functions and data structures intended for GPU execution.",
-    "NVCC Compilation Process: The role of the NVIDIA CUDA Compiler (NVCC) in separating and compiling host and device code.",
-    "Host Code Compilation Flow: Compilation of host code using standard C/C++ compilers and execution as a traditional CPU process.",
-    "Device Code Compilation Flow: Marking of data-parallel functions (kernels) and data structures using CUDA keywords, and subsequent compilation by the NVCC runtime.",
-    "Kernel Functions: The fundamental units of parallel execution on the CUDA device, encapsulating data-parallel operations.",
-    "Threads in Modern Computing: Conceptual understanding of a thread as a unit of program execution within a processor.",
-    "CUDA Kernel Launch and Thread Generation: The mechanism by which a CUDA program initiates parallel execution by launching kernel functions, leading to the creation of numerous threads.",
-    "Efficiency of CUDA Thread Management: The hardware-level optimizations that enable rapid generation and scheduling of CUDA threads compared to traditional CPU threads.",
-    "Grids of Threads: The collective term for all threads launched by a single kernel invocation.",
-    "Kernel Execution Lifecycle: The sequence of host CPU execution initiating kernel launches, parallel GPU execution of threads, and the eventual termination of the grid, followed by continued host execution.",
-    "Overlapping CPU and GPU Execution: Advanced techniques for concurrently executing code on the CPU and GPU to maximize resource utilization."
-]
+    # Process each section separately
+    for section_name, topics in topics_dict.items():
+        # Create output filename from section name
+        safe_name = "".join(c for c in section_name if c.isalnum() or c in (' ', '-', '_')).strip()
+        output_file = os.path.join(INPUT_DIR, f"{safe_name}.md")
+        
+        # Process topics for this section
+        content = process_topic_section(chat_session, topics, section_name)
+        
+        # Save section output
+        save_output(content, output_file)
 
 if __name__ == "__main__":
     main()
