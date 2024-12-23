@@ -210,10 +210,43 @@ Remember to:
 3. Place diagrams in logical positions within the text"""
     )
 
+def create_filename_model():
+    """Create a model specifically for generating filenames."""
+    filename_config = {
+        "temperature": 0.7,  # Reduced for more consistent naming
+        "top_p": 0.95,
+        "top_k": 40,
+        "max_output_tokens": 1024,  # Reduced since we only need short responses
+        "response_mime_type": "text/plain",
+    }
+    
+    return genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        generation_config=filename_config,
+        system_instruction="""Generate a concise, descriptive filename (without extension) for the given topic. Requirements:
+- Maximum 50 characters
+- Use only letters, numbers, and spaces
+- Start with a capital letter
+- Be descriptive but concise
+- Remove any special characters
+- Return ONLY the filename, nothing else
+
+Example input:
+"Hierarchical Thread Structure: Concepts of grids, blocks, and threads within CUDA"
+
+Example output:
+"Hierarchical Thread Structure"
+""")
+
 def save_topic_file(section_dir, topic, index, content):
     """Save topic content to a file."""
-    safe_topic = "".join(c for c in topic.split('\n')[0] if c.isalnum() or c in (' ', '-', '_')).strip()
-    topic_filename = f"{index:02d}. {safe_topic[:50]}.md"
+    # Create filename model and get suggested name
+    filename_model = create_filename_model()
+    chat = filename_model.start_chat()
+    suggested_name = chat.send_message(topic).text.strip()
+    
+    # Create filename with index and suggested name
+    topic_filename = f"{index:02d}. {suggested_name}.md"
     topic_path = os.path.join(section_dir, topic_filename)
     
     with open(topic_path, "w", encoding='utf-8') as f:
