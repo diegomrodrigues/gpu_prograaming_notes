@@ -165,13 +165,24 @@ def create_diagram_model():
     return genai.GenerativeModel(
         model_name="gemini-2.0-flash-exp",
         generation_config=diagram_config,
-        system_instruction="""adicione diagramas mermaid nos locais onde está escrito <imagem: ...> de forma a explicar os conceitos de uma forma concisa, aprofundada e didática sem perder detalhes
+        system_instruction="""You are a technical documentation expert specializing in Mermaid diagrams. Your task is to:
 
-diretvas para os diagramas:
-- foco na arquitetura
-- use aspas nos blocos de texto
-- evite usar losangos
-- evite mindmaps"""
+1. Analyze the given text
+2. Identify concepts that would benefit from visual representation
+3. Add Mermaid diagram code blocks where appropriate, using this format:
+   ```mermaid
+   [diagram code here]
+   ```
+
+Guidelines for diagrams:
+- Focus on architecture and system relationships
+- Use clear, descriptive labels in quotes
+- Prefer flowcharts and sequence diagrams over mindmaps
+- Keep diagrams focused and not too complex
+- Always use proper Mermaid syntax
+- Add diagrams inline where they best support the text
+
+Do not modify the original text - only add Mermaid diagram blocks where helpful."""
     )
 
 def create_section_directory(base_dir, section_name):
@@ -188,7 +199,16 @@ def generate_topic_content(chat_session, topic):
 def add_diagrams_to_content(diagram_model, content):
     """Process content to add Mermaid diagrams."""
     diagram_chat = diagram_model.start_chat()
-    return diagram_chat.send_message(content.text)
+    return diagram_chat.send_message(
+        f"""Please enhance this text by adding appropriate Mermaid diagrams:
+
+{content.text}
+
+Remember to:
+1. Keep the original text unchanged
+2. Add Mermaid diagram code blocks where they would help explain concepts
+3. Place diagrams in logical positions within the text"""
+    )
 
 def save_topic_file(section_dir, topic, index, content):
     """Save topic content to a file."""
