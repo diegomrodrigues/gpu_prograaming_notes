@@ -243,7 +243,7 @@ def save_topic_file(section_dir, topic, index, content):
     # Create filename model and get suggested name
     filename_model = create_filename_model()
     chat = filename_model.start_chat()
-    suggested_name = chat.send_message(topic).text.strip()
+    suggested_name = chat.send_message(topic).text
     
     # Create filename with index and suggested name
     topic_filename = f"{index:02d}. {suggested_name}.md"
