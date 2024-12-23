@@ -1,8 +1,5 @@
-Okay, here is the list of topics and subtopics for Chapter 6, formatted as requested:
-
-**6. Performance Considerations**
-
 6.1 **Warps and Thread Execution**
+
 *   Thread Execution Order: Independence of thread execution order within a block, emphasizing the need for explicit synchronization; threads should not rely on any implicit ordering.
 *   Warp-Based Execution: Bundling of threads into warps for SIMD hardware execution, and that the hardware executes all threads in a warp in a single instruction multiple data manner.
 *   SIMD Implementation: Low cost of SIMD hardware, with its ability to execute a single instruction for multiple data, leading to lower manufacturing costs, and also the possibility for power savings.

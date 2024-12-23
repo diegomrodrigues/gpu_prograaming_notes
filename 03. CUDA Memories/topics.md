@@ -1,8 +1,5 @@
-Okay, here is the list of topics and subtopics for Chapter 5, formatted as requested:
-
-**5. CUDA Memories**
-
 5.1 **Importance of Memory Access Efficiency**
+
 *   CGMA Ratio: Concept of the Compute to Global Memory Access (CGMA) ratio, defined as the number of floating-point calculations performed per access to global memory; ratio that reflects the efficiency of a kernel's memory usage and its impact on performance, crucial for achieving high performance due to global memory bandwidth limitations.
 *   Impact of CGMA on Performance: Highlighting that a low CGMA ratio leads to underutilization of compute resources, with examples of matrix multiplication where the low CGMA ratio limits performance, even if the hardware could achieve higher theoretical peak GFLOPs.
 *   Bandwidth Limitations: How Global memory's limited bandwidth constrains the rate at which data can be processed, and that the matrix multiplication kernel in its basic form does not make effective use of the computational power.

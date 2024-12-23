@@ -153,19 +153,29 @@ def get_topics_dict(topics_content):
     return json.loads(response.text)
 
 def process_topic_section(chat_session, topics, section_name):
-    """Process topics for a specific section and return the content."""
-    sections = []
+    """Process topics for a specific section and save individual topic files."""
     total_topics = len(topics)
     print(f"\nProcessing {total_topics} topics for section: {section_name}")
+    
+    # Create section folder
+    safe_section_name = "".join(c for c in section_name if c.isalnum() or c in (' ', '-', '_')).strip()
+    section_dir = os.path.join(INPUT_DIR, f"01. {safe_section_name}")
+    os.makedirs(section_dir, exist_ok=True)
     
     for i, topic in enumerate(topics, 1):
         print(f"\nTopic {i}/{total_topics}:")
         print(f"- {topic[:100]}...")
         response = chat_session.send_message(topic)
-        sections.append(response.text)
-        print("✓ Response received")
-    
-    return "\n".join(sections)
+        
+        # Create topic filename with padding
+        safe_topic = "".join(c for c in topic.split('\n')[0] if c.isalnum() or c in (' ', '-', '_')).strip()
+        topic_filename = f"{i:02d}. {safe_topic[:50]}.md"  # Limit topic name length
+        topic_path = os.path.join(section_dir, topic_filename)
+        
+        # Save individual topic file
+        with open(topic_path, "w", encoding='utf-8') as f:
+            f.write(response.text)
+        print(f"✓ Saved topic to: {topic_filename}")
 
 def main():
     """Main execution flow."""
@@ -193,15 +203,8 @@ def main():
 
     # Process each section separately
     for section_name, topics in topics_dict.items():
-        # Create output filename from section name
-        safe_name = "".join(c for c in section_name if c.isalnum() or c in (' ', '-', '_')).strip()
-        output_file = os.path.join(INPUT_DIR, f"{safe_name}.md")
-        
         # Process topics for this section
-        content = process_topic_section(chat_session, topics, section_name)
-        
-        # Save section output
-        save_output(content, output_file)
+        process_topic_section(chat_session, topics, section_name)
 
 if __name__ == "__main__":
     main()
