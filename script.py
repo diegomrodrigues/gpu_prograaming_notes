@@ -5,7 +5,7 @@ import google.generativeai as genai
 
 # Constants
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_DIR = os.path.join(BASE_DIR, "01. Data Parallelism")
+INPUT_DIR = os.path.join(BASE_DIR, "02. Data Parallel Execution Model")
 PROMPT_FILE = os.path.join(BASE_DIR, "00. prompts", "Resumo.md")
 GEMINI_API_KEY = "AIzaSyCDzmg1GM54f05KqSxzx7266kzuEnFGCPs"  #os.environ["GEMINI_API_KEY"]
 
