@@ -1,6 +1,5 @@
-**4. Data-Parallel Execution Model**
-
 4.1 **CUDA Thread Organization**
+
 *   Hierarchical Thread Structure: Concepts of grids, blocks, and threads within CUDA; the two-level hierarchy of CUDA threads, where a grid consists of blocks, and a block consists of threads, used to divide work and establish execution locality.
 *   Built-in Variables:  Pre-initialized variables such as `gridDim`, `blockDim`, `blockIdx`, and `threadIdx`, accessible within kernel functions to determine the thread's position in the execution hierarchy, these variables should not be used for other purposes.
 *   Execution Configuration Parameters: Specification of grid and block dimensions during kernel launch, using `<<<>>>`, these dimensions are accessed through built-in variables `gridDim` and `blockDim`.
@@ -55,8 +54,8 @@
 *   Latency Hiding: Concept of latency tolerance or latency hiding, an strategy of executing other warps while some warps are waiting, in order to fully use the hardware resources.
 *   Zero-Overhead Thread Scheduling: Selection of ready warps for execution, preventing idle time and maximizing the execution throughput, and that this is the reason why GPUs do not dedicate chip area to branch prediction and cache memories, as they can hide latency with warps.
 *   Block Size Analysis: Importance of choosing suitable block sizes considering device limitations, and how the block size can impact SM occupation and efficiency.
-    *   SM Occupancy: How the block dimensions dictate the occupation of the SM, and that this should be maximized in order to use the SPs to their maximum potential.
-    *  Warp Scheduling: How warp scheduling is the key factor in efficiently using execution units, and hiding latencies from long latency operations like memory access.
+*   SM Occupancy: How the block dimensions dictate the occupation of the SM, and that this should be maximized in order to use the SPs to their maximum potential.
+*   Warp Scheduling: How warp scheduling is the key factor in efficiently using execution units, and hiding latencies from long latency operations like memory access.
 *   Interplay of Thread and Block Limits: Importance of considering both thread and block limits in SMs when choosing block dimensions for optimal performance, and that there is an interaction of the number of thread blocks and number of threads in each block.
 
 4.8 **Summary**
