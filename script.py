@@ -187,8 +187,7 @@ Do not modify the original text - only add Mermaid diagram blocks where helpful.
 
 def create_section_directory(base_dir, section_name):
     """Create and return the path to a section directory."""
-    safe_section_name = "".join(c for c in section_name if c.isalnum() or c in (' ', '-', '_')).strip()
-    section_dir = os.path.join(base_dir, f"01. {safe_section_name}")
+    section_dir = os.path.join(base_dir, section_name)
     os.makedirs(section_dir, exist_ok=True)
     return section_dir
 
@@ -244,7 +243,7 @@ def save_topic_file(section_dir, topic, index, content):
     # Create filename model and get suggested name
     filename_model = create_filename_model()
     chat = filename_model.start_chat()
-    suggested_name = chat.send_message(topic).text
+    suggested_name = chat.send_message(topic).text.strip()
     
     # Create filename with index and suggested name
     topic_filename = f"{index:02d}. {suggested_name}.md"
