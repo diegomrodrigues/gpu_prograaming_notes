@@ -230,6 +230,7 @@ def create_filename_model():
 - Be descriptive but concise
 - Remove any special characters
 - Return ONLY the filename, nothing else
+- Don't return the filename without space between words
 
 Example input:
 "Hierarchical Thread Structure: Concepts of grids, blocks, and threads within CUDA"
@@ -300,9 +301,11 @@ def main():
     topics_dict = get_topics_dict(topics_content)
 
     # Process each section separately
-    for section_name, topics in topics_dict.items():
+    for i, (section_name, topics) in enumerate(topics_dict.items(), 1):
+        # Add section number to section name
+        numbered_section_name = f"{i:02d}. {section_name}"
         # Process topics for this section
-        process_topic_section(chat_session, topics, section_name)
+        process_topic_section(chat_session, topics, numbered_section_name)
 
 if __name__ == "__main__":
     main()
