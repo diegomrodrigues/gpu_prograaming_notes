@@ -5,7 +5,6 @@ import google.generativeai as genai
 
 # Constants
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_DIR = os.path.join(BASE_DIR, "02. Data Parallel Execution Model")
 PROMPT_FILE = os.path.join(BASE_DIR, "00. prompts", "Resumo.md")
 GEMINI_API_KEY = "AIzaSyCDzmg1GM54f05KqSxzx7266kzuEnFGCPs"  #os.environ["GEMINI_API_KEY"]
 
@@ -222,12 +221,11 @@ def create_filename_model():
     return genai.GenerativeModel(
         model_name="gemini-1.5-flash",
         generation_config=filename_config,
-        system_instruction="""Generate a concise, descriptive filename (without extension) for the given topic. Requirements:
+        system_instruction="""Generate a concise, descriptive filename for the given topic. Requirements:
 - Maximum 50 characters
 - Use only letters, numbers, and spaces
 - Start with a capital letter
 - Be descriptive but concise
-- Remove any special characters
 - Return ONLY the filename, nothing else
 - Don't return the filename without space between words
 
@@ -235,7 +233,9 @@ Example input:
 "Hierarchical Thread Structure: Concepts of grids, blocks, and threads within CUDA"
 
 Example output:
-"Hierarchical Thread Structure"
+"Hierarchical Thread Structure" 
+
+Focus on space between words!
 """)
 
 def save_topic_file(section_dir, topic, index, content):
@@ -253,14 +253,14 @@ def save_topic_file(section_dir, topic, index, content):
         f.write(content.text)
     return topic_filename
 
-def process_topic_section(chat_session, topics, section_name):
+def process_topic_section(chat_session, topics, section_name, input_dir):
     """Process topics for a specific section and save individual topic files."""
     total_topics = len(topics)
     print(f"\nProcessing {total_topics} topics for section: {section_name}")
     
     # Create models and directory
     diagram_model = create_diagram_model()
-    section_dir = create_section_directory(INPUT_DIR, section_name)
+    section_dir = create_section_directory(input_dir, section_name)
     
     for i, topic in enumerate(topics, 1):
         print(f"\nTopic {i}/{total_topics}:")
@@ -329,7 +329,7 @@ def main():
                 # Add section number to section name
                 numbered_section_name = f"{i:02d}. {section_name}"
                 # Process topics for this section
-                process_topic_section(chat_session, topics, numbered_section_name)
+                process_topic_section(chat_session, topics, numbered_section_name, input_dir)
                 
         except FileNotFoundError as e:
             print(f"Error processing directory {input_dir}: {e}")
