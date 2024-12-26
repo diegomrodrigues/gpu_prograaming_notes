@@ -180,6 +180,7 @@ Guidelines for diagrams:
 - Keep diagrams focused and not too complex
 - Always use proper Mermaid syntax
 - Add diagrams inline where they best support the text
+- Do not forget the first diagram of the text and to replace by a diagram others <image: ...> blocks
 
 Do not modify the original text - only add Mermaid diagram blocks where helpful."""
     )
