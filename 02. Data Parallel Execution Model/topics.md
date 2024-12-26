@@ -57,24 +57,3 @@
 *   SM Occupancy: How the block dimensions dictate the occupation of the SM, and that this should be maximized in order to use the SPs to their maximum potential.
 *   Warp Scheduling: How warp scheduling is the key factor in efficiently using execution units, and hiding latencies from long latency operations like memory access.
 *   Interplay of Thread and Block Limits: Importance of considering both thread and block limits in SMs when choosing block dimensions for optimal performance, and that there is an interaction of the number of thread blocks and number of threads in each block.
-
-4.8 **Summary**
-*   Key Concepts: Recap of the chapter's key concepts: grid, block, thread, `blockIdx`, `threadIdx`, resource allocation, synchronization, and transparent scalability.
-*   Programming Responsibility: How CUDA programming forces developers to understand and use the hierarchical and multidimensional organization of threads, in order to manage data access correctly.
-*   Block Assignment Flexibility:  How blocks are assigned to SMs in arbitrary order, resulting in transparent scalability of CUDA applications and that this comes with the limitation of synchronization between different blocks.
-*   Device Resource Limits: Summary of per-device limits on SM resources, such as number of blocks and number of threads, and the need to consider these limitations when designing kernels.
-*   Warp Partitioning: Summary of how blocks are partitioned into warps, and how this is a mean to hide latency and keep the execution units active, despite the presence of long latency operations.
-
-4.9 **Exercises**
-*   Block configuration and thread counts.
-*   Grid sizes in vector addition.
-*   Warp divergence.
-*   Kernel image size and thread allocation.
-*   Idle threads based on image size.
-*   Barrier timing and waiting percentages.
-*   Thread assignment feasibility across compute capability versions.
-*  Use of `__syncthreads()` and its limitations.
-*   Tiled matrix multiplication and thread block configuration.
-*   Shared memory use in a matrix transpose kernel and its correctness.
-
-This detailed list should help any advanced practitioner deepen their knowledge about each section in this chapter.

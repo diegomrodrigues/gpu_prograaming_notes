@@ -1,6 +1,5 @@
-**13. Parallel Programming and Computational Thinking**
-
 13.1 **Goals of Parallel Computing**
+
 *  Problem Solving Time: Using parallel computing to solve existing problems in less time, with examples such as the financial portfolio risk analysis which can be sped up to provide results faster.
 *   Problem Size Expansion: Using parallel computing to solve bigger problems within a given timeframe; using the financial example, if the firm expands the amount of holdings, a sequential version would not be able to finish in time, but the parallel version can.
 *   Solution Quality Improvement:  Using parallel computing to achieve better solutions for a given problem and a time restriction, with the example of the risk analysis; using parallel computing, a firm can improve their results while adhering to their given timeframe for results.
@@ -33,27 +32,8 @@
 *  Problem Understanding: Requirement of clear understanding of problem to be solved, and a clear grasp of desirable and undesirable memory access behaviors.
 *   Overwhelming Algorithm Design: The challenges that are imposed by algorithm design to overcome major difficulties such as parallelism, efficiency and bandwidth consumption.
 *   Bottom-Up Learning: Learning through particular models to provide footing before generalizing, making the learning process more natural and easier, since humans learn more efficiently by learning concrete concepts before abstract ones.
-*  Essential Parallel Programming Skills:  Summary of skills that the parallel programmer needs to be effective.
-    *   Computer Architecture: Memory organization, caching, locality, SIMD, SIMT, SMPD, floating-point accuracy.
-     *   Programming Models and Compilers: Memory organization, data layout, thread transformations, loop structure, etc.
-    *   Algorithm Techniques: Tiling, cutoff, scatter-gather, and binning.
-    *   Domain Knowledge: Numerical methods, precision, accuracy, and stability.
-
-13.5 **Summary**
-* Key Aspects Summary: The main dimensions of algorithm selection and computational thinking, and that is necessary to select algorithms with trade-offs.
-* Algorithm Variety:  The key lesson that a programmer must select from a variety of different algorithms.
-*  Algorithm Tradeoffs: That algorithms present different tradeoffs while maintaining the same numerical accuracy, and that other algorithms might involve sacrificing some accuracy to obtain better results in scaling.
-*  Cutoff Strategies: The applicability of cutoff strategies in many different domains that require massive parallelization, and the need for good computational thinking to achieve good results with complex algorithms.
-
-13.6 **Exercises**
-*  Implementation of the binning function for atoms, with coalescing and data alignment.
-* Implementation of the cutoff kernel.
-*  Design of a complete reduction kernel that avoids wasteful threads, with an effective use of configuration parameters.
-*   Analysis of the access pattern of threads in the `MatrixMulKernel`, and verification of the access of elements in global memory.
-*   Determining input matrices with coalesced access for simple and tiled multiplication.
-*  Divergence analysis for reduction kernels, showing the number of warps with divergence.
-*   Code analysis of an example using dot product operations.
-* Determining block sizes that avoid uncoalesced accesses to global memory.
-*  Analysis of a modified kernel to improve performance.
-
-This detailed list should provide a comprehensive learning framework for the topics discussed in this chapter.
+*   Essential Parallel Programming Skills:  Summary of skills that the parallel programmer needs to be effective.
+*   Computer Architecture: Memory organization, caching, locality, SIMD, SIMT, SMPD, floating-point accuracy.
+*   Programming Models and Compilers: Memory organization, data layout, thread transformations, loop structure, etc.
+*   Algorithm Techniques: Tiling, cutoff, scatter-gather, and binning.
+*   Domain Knowledge: Numerical methods, precision, accuracy, and stability.

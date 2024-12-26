@@ -275,36 +275,65 @@ def process_topic_section(chat_session, topics, section_name):
         filename = save_topic_file(section_dir, topic, i, final_response)
         print(f"✓ Saved topic with diagrams to: {filename}")
 
+def get_input_directories(base_dir):
+    """Get all valid input directories from the base directory."""
+    input_dirs = []
+    for item in os.listdir(base_dir):
+        dir_path = os.path.join(base_dir, item)
+        # Skip if not a directory or starts with "00."
+        if not os.path.isdir(dir_path) or item.startswith("00."):
+            continue
+        # Skip if no topics.md found
+        if not any(f.lower() == "topics.md" for f in os.listdir(dir_path)):
+            continue
+        input_dirs.append(dir_path)
+    return input_dirs
+
 def main():
     """Main execution flow."""
     # Initialize Gemini
     init_gemini()
 
-    # Get input directory and find PDFs
-    pdf_files = get_pdf_files_in_dir(INPUT_DIR)
+    # Get all valid input directories
+    input_directories = get_input_directories(BASE_DIR)
     
-    if not pdf_files:
-        print("No PDF files found in the specified directory!")
+    if not input_directories:
+        print("No valid input directories found!")
         return
 
-    # Upload and process files
-    files = upload_multiple_files(pdf_files)
-    wait_for_files_active(files)
+    for input_dir in input_directories:
+        print(f"\nProcessing directory: {input_dir}")
+        
+        # Get PDF files for current directory
+        pdf_files = get_pdf_files_in_dir(input_dir)
+        
+        if not pdf_files:
+            print("No PDF files found in the directory, skipping...")
+            continue
 
-    # Create model and chat session
-    model = create_model(PROMPT_FILE)
-    chat_session = initialize_chat_session(model, files)
+        # Upload and process files
+        files = upload_multiple_files(pdf_files)
+        wait_for_files_active(files)
 
-    # Get topics dictionary
-    topics_content = read_topics_file(INPUT_DIR)
-    topics_dict = get_topics_dict(topics_content)
+        # Create model and chat session
+        model = create_model(PROMPT_FILE)
+        chat_session = initialize_chat_session(model, files)
 
-    # Process each section separately
-    for i, (section_name, topics) in enumerate(topics_dict.items(), 1):
-        # Add section number to section name
-        numbered_section_name = f"{i:02d}. {section_name}"
-        # Process topics for this section
-        process_topic_section(chat_session, topics, numbered_section_name)
+        # Get topics dictionary
+        try:
+            topics_content = read_topics_file(input_dir)
+            topics_dict = get_topics_dict(topics_content)
+
+            # Process each section separately
+            for i, (section_name, topics) in enumerate(topics_dict.items(), 1):
+                # Add section number to section name
+                numbered_section_name = f"{i:02d}. {section_name}"
+                # Process topics for this section
+                process_topic_section(chat_session, topics, numbered_section_name)
+                
+        except FileNotFoundError as e:
+            print(f"Error processing directory {input_dir}: {e}")
+            continue
 
 if __name__ == "__main__":
     main()

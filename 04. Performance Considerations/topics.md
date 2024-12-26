@@ -40,23 +40,3 @@
 *   Redundant Loading Example: The matrix multiplication example, with the redundant loading of `d_M` matrix tiles into shared memory, how the new approach will reduce the redundancy.
 *  Adjusting Granularity for Efficiency: The opportunity to adjust the thread granularity to reduce redundancy, and by having each thread do more work and that this can help to reduce the overall cost of performing a highly parallel computation.
 *   Rectangular Tiles: How rectangular tiles improve performance with larger matrices, even if that reduces the overall amount of thread blocks, it increases performance due to less access to the global memory.
-
-6.5  **Summary**
-*   Review of Performance Aspects: Summary of key CUDA C performance aspects, that were covered by the chapter: control flow divergence, global memory coalescing, dynamic resource partitioning, and instruction mixes.
-*  Practical Techniques: Use of practical techniques to create better programs, improving performance, and how all of these techniques, will be studied with practical applications in the next few chapters.
-
-6.6  **Exercises**
-*   Modification of reduction kernels for better performance.
-*   Comparison of modified reduction kernels based on added arithmetic operations.
-*  Complete reduction kernel based on Exercise 6.1.
-*   Design of a reduction program based on the kernel in Exercise 6.3.
-*   Access pattern in the matrix multiplication kernel.
-*   Matrix input with coalesced accesses, for simple and tiled matrix multiplication.
-*   Divergence analysis in reduction kernels.
-*   Dynamic partitioning based on shared memory and register consumption.
-*   Matrix multiplication with dynamic shared memory.
-*   `scalarProd` Kernel Analysis.
-*  `BLOCK_SIZE` value for coalesced memory access.
-* Improved kernel performance by loop unrolling.
-
-This list of topics and subtopics should provide a solid base for advanced users to use the concepts explored in the chapter for optimization and further studies.

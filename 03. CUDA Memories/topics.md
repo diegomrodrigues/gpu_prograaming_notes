@@ -43,25 +43,3 @@
 *   Device Property Checking Functions: The need to use functions like `cudaGetDeviceProperties()` to retrieve device resource limitations, in order to decide parameters in the kernel like how much shared memory should be used.
 *  Shared Memory Size: How the size of the shared memory should be defined as a compile time variable in the first implementation, which cannot be dynamically adjusted, a problem that is solved by the next approach.
 * Dynamic Shared Memory Declaration: Use of `extern __shared__` keyword, for declaring shared memory variables without specifying size, allowing dynamic adjustments at runtime, but requiring manual calculation for the linearized index of elements, and also exposing the developer to the risk of manually accessing the array out of bounds if the size is not calculated correctly.
-
-5.6 **Summary**
-*   CUDA Memory Types: Summary of CUDA memories, highlighting registers, shared, and constant memory's advantages in terms of speed and parallelism, but also their drawbacks in terms of size.
-*   Tiled Algorithm Illustration: The use of matrix multiplication as an example to highlight the effectiveness of tiled algorithms, and to enable the use of fast memories, and the increased CGMA ratio that it provides.
-*   Limitations of Fast Memories: Importance of being aware of memory limitations and how those limitations can restrict the number of threads that can execute concurrently in an SM.
-*   Computational Thinking:  How the design and optimization of CUDA algorithms demand computational thinking, to understand the hardware limitations and how the code interacts with these limitations.
-*   Locality Principle in Parallel Systems: The effectiveness of tiled algorithms in virtually all types of parallel systems, including multicore CPUs and how the focus on locality of data access is a core principle for using high-speed memories and maximizing performance.
-
-5.7 **Exercises**
-*  Shared memory use in matrix addition.
-*   Visualization of memory access patterns in matrix multiplication with different tiling.
-*   `__syncthreads()` effect on tiled kernel behavior and its absence.
-*   Shared vs registers for global memory fetched data.
-*  Bandwidth reduction with different tiling sizes.
-*  Local variables creation based on thread and block count.
-* Shared variable creation based on thread and block count.
-*  Shared Memory vs L1 cache.
-* Global memory requests in matrix multiplication.
-* Memory and compute bound indication for kernel performance.
-*  Feasibility of resource assignments with different compute capabilities.
-
-This detailed list of topics and subtopics should provide a solid base for advanced readers to grasp the main ideas of the chapter and to use these techniques in their own projects.

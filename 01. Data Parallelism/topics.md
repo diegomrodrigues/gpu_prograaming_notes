@@ -76,25 +76,4 @@
 *   **Kernel Launch Configuration Parameters:** The syntax `<<<grid_dim, block_dim>>>` for specifying the dimensions of the grid and thread blocks when launching a kernel.
 *   **Ceiling Function for Grid Dimension Calculation:**  Using the ceiling function to ensure sufficient thread blocks are launched to cover the entire dataset.
 
-**3.6 Summary**
 
-*   **CUDA as an Extension of C for Parallel Computing:**  The core concept of CUDA building upon the C programming language to enable GPU-accelerated computing.
-*   **Heterogeneous Parallel Computing Support:** CUDA's capabilities for programming systems with both CPUs and GPUs.
-*   **Summary of Function Declaration Extensions:** Recap of `__global__`, `__device__`, and `__host__` keywords for defining function execution contexts.
-*   **Purpose of Kernel Launch Configuration Parameters:** Review of the `<<<>>>` syntax and its role in defining grid and block dimensions.
-*   **Predefined Variables for Thread Identification:** Summary of `threadIdx`, `blockIdx`, and `blockDim` for enabling threads to determine their identity and data responsibilities.
-*   **Runtime API Functions for CUDA Services:** Overview of `cudaMalloc()`, `cudaFree()`, and `cudaMemcpy()` for memory management and data transfer.
-
-**3.7 Exercises**
-
-*   **Matrix Addition Kernel:** Concepts related to implementing a CUDA kernel for matrix addition, involving thread mapping to matrix elements.
-*   **Host Stub Function for Matrix Addition:**  Implementation of the host-side code for allocating memory, transferring data, launching the kernel, and retrieving results for matrix addition.
-*   **Thread Mapping Strategies for Matrix Operations:** Different approaches for assigning threads to output matrix elements, rows, or columns.
-*   **Pros and Cons of Kernel Design Choices:** Analysis of the trade-offs associated with different thread mapping strategies in terms of performance and complexity.
-*   **Matrix-Vector Multiplication Kernel:** Concepts involved in implementing a CUDA kernel for matrix-vector multiplication, focusing on the dot product operation.
-*   **Host Stub Function for Matrix-Vector Multiplication:** Implementation of the host-side code for matrix-vector multiplication.
-*   **Addressing Redundant Function Declarations:** Understanding the use cases for declaring functions with both `__host__` and `__device__` qualifiers.
-*   **Completing Code Sections:**  Practical exercise focusing on applying the concepts of memory management and data transfer.
-*   **Mapping Thread/Block Indices to Data Index (Vector Addition):** Understanding the formula for calculating the global data index for a thread in a 1D vector addition.
-*   **Mapping Thread/Block Indices to Data Index (Multiple Elements per Thread):** Adapting the index calculation for scenarios where each thread processes multiple adjacent data elements.
-*   **Calculating Total Threads in a Grid:** Determining the total number of threads based on vector length and thread block size.
