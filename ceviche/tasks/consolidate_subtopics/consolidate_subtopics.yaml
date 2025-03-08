@@ -1,0 +1,163 @@
+consolidate_subtopics:
+  model_name: gemini-2.0-pro-exp-02-05
+  temperature: 0.7
+  top_p: 0.95
+  top_k: 64
+  max_output_tokens: 8192
+  response_mime_type: text/plain
+
+  system_instruction: >
+    Você receberá **um único objeto em JSON** com a seguinte estrutura:
+
+    ```json
+    {
+      "topics": [
+        {
+          "topic": "Nome do tópico",
+          "sub_topics": [
+            "Sub-tópico 1 que pode ter conteúdo similar a outros",
+            "Sub-tópico 2 que pode ter conteúdo similar a outros"
+          ]
+        }
+      ]
+    }
+    ```
+
+    Seu objetivo é **consolidar apenas sub-tópicos similares** dentro de cada tópico, mesclando seu conteúdo de forma inteligente para:
+    1. NUNCA perder qualquer informação única
+    2. Reduzir apenas redundâncias óbvias e diretas
+    3. Manter a clareza e coesão do texto
+    4. Preservar sub-tópicos distintos separadamente
+    5. Traduzir todos os nomes de tópicos para inglês
+    6. Consolidar tópicos que tenham o mesmo significado em idiomas diferentes
+
+    ### Diretrizes para consolidação:
+    1. **Identificação de Similaridades**
+       - Identifique sub-tópicos que abordam exatamente o mesmo conceito ou tema
+       - Consolide APENAS quando houver sobreposição de conteúdo
+       - Identifique e consolide tópicos que significam a mesma coisa em diferentes idiomas
+       - Mantenha sub-tópicos separados quando:
+         - Abordarem aplicações diferentes
+         - Usarem metodologias distintas
+         - Tiverem exemplos únicos
+         - Explorarem aspectos complementares
+
+    2. **Processo de Consolidação**
+       - Combine sub-tópicos mantendo estrutura lógica de 3-5 parágrafos
+       - Agrupe considerando:
+         * Tipo de aplicação
+         * Metodologia comum
+         * Contexto temporal
+         * Dependências conceituais
+       - Garanta que NENHUMA informação seja perdida
+       - Elimine apenas redundâncias diretas e óbvias
+       - Organize o conteúdo de forma lógica e fluida
+
+    3. **Organização Didática**
+       - Estabeleça ordem lógica de apresentação dos tópicos:
+         1. Do fundamental ao aplicado
+         2. Do histórico ao contemporâneo
+         3. Do conceitual ao prático
+         4. Do geral ao específico
+       - Agrupe subtópicos por:
+         * Relações de dependência conceitual
+         * Progressão natural de complexidade
+         * Contexto temporal de aplicação
+         * Fluxo lógico de aprendizagem
+       - Utilize princípios pedagógicos:
+         * Progressão em espiral (revisitar conceitos com profundidade crescente)
+         * Conexões explícitas entre tópicos relacionados
+         * Sequência teoria -> exemplos -> aplicações
+         * Transições suaves entre conceitos
+
+    4. **Resultado Final**
+       - Retorne **apenas o JSON** resultante, mantendo a estrutura original:
+         ```json
+         {
+           "topics": [
+             {
+               "topic": "Topic name in English",
+               "sub_topics": [
+                 "Sub-tópico consolidado com todo o conteúdo único preservado"
+               ]
+             }
+           ]
+         }
+         ```
+       - Não inclua texto adicional além do objeto JSON
+       - Garanta que o JSON seja válido
+       - Todos os nomes de tópicos devem estar em inglês
+       - Consolide tópicos duplicados em diferentes idiomas
+       - **Evite tópicos com 1-2 sub-tópicos**:
+         * Redistribua conteúdo entre tópicos relacionados quando necessário
+         * Considere fundir tópicos adjacentes se um ficar com poucos sub-tópicos
+         * Mantenha equilíbrio geral (ex: evitar 1 tópico com 7 sub-tópicos e outro com 1)
+       - Priorize estrutura balanceada:
+         * Ideal: 5-10 tópicos com 3-7 sub-tópicos cada
+         * Permita variação apenas quando justificável
+         * Redistribua conteúdo entre tópicos se necessário para evitar desbalanceamento
+       - **Priorize ordem didática**:
+         * Teoria antes da prática
+         * Conceitos básicos antes de avançados
+         * Causas antes de consequências
+         * Problemas antes de soluções
+         * Simple -> Complexo -> Aplicado
+       - Garanta coerência narrativa:
+         * Cada tópico deve preparar para o próximo
+         * Evitar saltos abruptos de complexidade
+         * Manter fio condutor lógico
+
+    ```json
+    {
+      "type": "object",
+      "properties": {
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "topic": {
+                "type": "string"
+              },
+              "sub_topics": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "topic",
+              "sub_topics"
+            ]
+          }
+        }
+      },
+      "required": [
+        "topics"
+      ]
+    }
+    ```
+
+    Em resumo: você deve **consolidar apenas sub-tópicos verdadeiramente similares** dentro de cada tópico, mesclando seu conteúdo de forma inteligente para reduzir redundâncias enquanto preserva todas as informações únicas, retornando apenas o JSON final.
+
+    Return your response in this format:
+    ```json
+    {...}
+    ```
+    <!-- END -->
+
+  user_message: >
+    Consolide os sub-tópicos similares do JSON fornecido, preservando todas as informações únicas:
+
+    {content}
+
+    Lembre-se de:
+    1. Manter a estrutura do JSON
+    2. Preservar todo o conteúdo único
+    3. Eliminar apenas redundâncias diretas
+    4. Return your response in this format:
+    ```json
+    {...}
+    ```
+    5. Return only text containing a JSON code block followed by <!-- END --> 

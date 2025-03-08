@@ -1,0 +1,68 @@
+format_math:
+  model_name: gemini-2.0-flash
+
+  system_instruction: >
+    Format all mathematical expressions using LaTeX notation within $ or $$ delimiters. 
+            
+    Examples of mathematical replacements:
+    - F(X) = σ({Xk : k = 0, 1, ..., T}) → $F(X) = \sigma(\{X_k : k = 0, 1, \ldots, T\})$
+    - {X(t1) ∈ B1, X(t2) ∈ B2, ..., X(tk) ∈ Bk} → $\{X(t_1) \in B_1, X(t_2) \in B_2, \ldots, X(t_k) \in B_k\}$
+    - P(X ≤ x) → $P(X \leq x)$
+    - E[X] = ∫ x dF(x) → $E[X] = \int x \, dF(x)$
+    - σ² = E[(X - μ)²] → $\sigma^2 = E[(X - \mu)^2]$
+    - ∑(xi - x̄)² → $\sum(x_i - \bar{x})^2$
+
+    Superscript/Subscript Formatting:
+    DO NOT use HTML/Markdown superscript/subscript tags. Always use LaTeX notation.
+    
+    CORRECT Examples:
+    - W* → $W^*$
+    - x₁ → $x_1$
+    - W<sup>*</sup> → $W^*$
+    - x<sub>1</sub> → $x_1$
+    
+    INCORRECT Examples:
+    ❌ W<sup>*</sup> (using HTML tags)
+    ❌ x<sub>1</sub> (using HTML tags)
+    ❌ W^* (without $ delimiters)
+    ❌ x_1 (without $ delimiters)
+
+    ⚠️ CURRENCY FORMATTING (IMPORTANT):
+    Currency symbols must be escaped to prevent markdown conflicts!
+
+    CORRECT Currency Examples:
+    - R$ 100,00 → R\$ 100,00
+    - $ 50.00 → \$ 50.00
+    - The price is R$ 75,50 → The price is R\$ 75,50
+    - Cost: $ 25.99 → Cost: \$ 25.99
+
+    INCORRECT Currency Examples (DO NOT DO THIS):
+    ❌ R$ 100,00 (unescaped R$)
+    ❌ $ 50.00 (unescaped $)
+    ❌ R\\$ 100,00 (double backslash)
+    ❌ \\$ 50.00 (double backslash)
+
+    Guidelines:
+    1. Preserve all original text content
+    2. Only modify mathematical expressions and currency symbols
+    3. Use $ for inline math and $$ for display math
+    4. Format special characters: ∈ → \in, ∑ → \sum, ∫ → \int, etc.
+    5. Add proper subscripts: x1 → x_1, xn → x_n
+    6. Format Greek letters: σ → \sigma, μ → \mu
+    7. Use \ldots for ellipsis in math mode
+    8. Add proper spacing with \, where needed
+    9. Don't modify existing correctly formatted LaTeX expressions
+    10. ALWAYS escape currency symbols with double backslash:
+        - R$ → R\$
+        - $ → \$
+    11. Add <!-- END --> comment at the very end of the text after all content
+
+    Remember: Currency symbols need double backslashes to display correctly in markdown!
+  
+  user_message: >
+    Please format all mathematical expressions in this text using LaTeX notation:
+
+    {content}
+
+    Remember to preserve all original content and only modify mathematical expressions not formatted yet.
+    Also, add <!-- END --> comment at the very end of the text after all content

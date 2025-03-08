@@ -1,0 +1,70 @@
+generate_step_proofs:
+  system_instruction: >
+    Gere provas detalhadas passo a passo para afirmações matemáticas, mantendo um fluxo lógico rigoroso.
+    Adicione essas provas junto ao conteúdo existente onde apropriado.
+
+    Diretrizes para geração de provas:
+    1. Preservar todo o conteúdo existente
+    2. Adicionar provas apenas onde elas melhoram a compreensão
+    3. Enumerar as etapas lógicas usando algarismos romanos
+    4. Cada etapa deve fluir naturalmente para a próxima
+    5. Terminar cada prova com um quadrado preto (■)
+    6. Formatar todas as expressões matemáticas usando notação LaTeX
+
+    Formato da prova:
+    - Começar com uma declaração clara do que será provado
+    - Numerar cada passo lógico com algarismos romanos (I, II, III, ...)
+    - Cada etapa deve:
+      * Apresentar um novo passo no raciocínio
+      * Conectar-se naturalmente com a etapa anterior
+      * Incluir justificativas quando necessário
+      * Usar LaTeX para expressões matemáticas
+    - Concluir com o resultado desejado e o símbolo ■
+
+    Exemplo de Prova - Regra da Cadeia:
+    Provaremos que se $y = f(u)$ e $u = g(x)$ são funções diferenciáveis, então:
+    $$\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}$$
+
+    I. Seja $y = f(u)$ uma função diferenciável em $u$ e $u = g(x)$ uma função diferenciável em $x$. 
+       Considere um incremento $\Delta x$ em $x$.
+
+    II. Quando $x$ muda por $\Delta x$, $u$ muda por $\Delta u$, e consequentemente $y$ muda por $\Delta y$. 
+        Pela definição de derivada, sabemos que:
+        $$\frac{dy}{dx} = \lim_{\Delta x \to 0} \frac{\Delta y}{\Delta x}$$
+
+    III. Podemos reescrever a razão $\frac{\Delta y}{\Delta x}$ como o produto:
+         $$\frac{\Delta y}{\Delta x} = \frac{\Delta y}{\Delta u} \cdot \frac{\Delta u}{\Delta x}$$
+
+    IV. Aplicando o limite e usando o fato de que $f$ e $g$ são diferenciáveis:
+        $$\lim_{\Delta x \to 0} \frac{\Delta y}{\Delta x} = \lim_{\Delta x \to 0} \left(\frac{\Delta y}{\Delta u} \cdot \frac{\Delta u}{\Delta x}\right) = \frac{dy}{du} \cdot \frac{du}{dx}$$
+
+    V. Portanto, demonstramos que $\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}$ ■
+
+    Requisitos:
+    1. Preservar a estrutura e fluxo do conteúdo existente
+    2. Adicionar provas onde afirmações matemáticas precisam de verificação
+    3. Numerar as etapas com algarismos romanos de forma sequencial
+    4. Garantir que cada etapa flua naturalmente para a próxima
+    5. Formatar todas as expressões matemáticas em LaTeX
+    6. Incluir citações e referências quando relevante
+    7. Manter notação consistente ao longo do texto
+    8. Fornecer justificativas claras quando necessário
+    9. Usar linguagem matemática apropriada
+    10. Incluir cálculos intermediários quando útil
+    11. Terminar cada prova com quadrado preto (■)
+    12. Adicionar notas explicativas para passos complexos
+    13. Adicionar comentário <!-- END --> ao final do texto após todo o conteúdo
+
+  user_message: >
+    Por favor, adicione provas detalhadas passo a passo a este texto onde apropriado:
+
+    {content}
+
+    Lembre-se de:
+    1. Preservar todo o conteúdo existente
+    2. Adicionar provas apenas onde elas melhoram a compreensão
+    3. Numerar cada passo lógico com algarismos romanos
+    4. Formatar toda matemática em LaTeX
+    5. Garantir que cada etapa flua naturalmente para a próxima
+    6. Terminar cada prova com ■ 
+    7. Adicionar comentário <!-- END --> ao final do texto após todo o conteúdo

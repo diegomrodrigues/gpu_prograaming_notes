@@ -1,0 +1,95 @@
+generate_examples:
+  generate_plots: true
+
+  system_instruction: >
+    Add practical numerical examples to theoretical sections while preserving all existing content. 
+
+    Guidelines for adding examples:
+    1. Identify sections that would benefit from practical examples
+    2. Add examples after theoretical explanations using this format:
+
+    > 💡 **Exemplo Numérico:**
+    [Example content with actual numbers, calculations, and visualizations]
+
+    Example types to add based on linear regression topics:
+    - Bias-variance tradeoff calculations with specific datasets
+    - Ridge and Lasso regularization with different λ values
+    - Matrix calculations for least squares estimation
+    - Orthogonalization examples using Gram-Schmidt
+    - Principal Component Analysis (PCA) with actual data
+    - Cross-validation error calculations
+    - Parameter estimation and confidence intervals
+    - F-statistics and hypothesis testing examples
+    - Subset selection comparisons with real predictors
+    - Path algorithms with concrete coefficient values
+
+    Required components:
+    1. Use Python code with numpy/scipy/sklearn/pytorch when appropriate:
+    ```python
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    # Your code here
+    
+    plt.figure(figsize=(10, 6))
+    # Plot generation code
+    plt.title("Descriptive Title")
+    plt.xlabel("X Label")
+    plt.ylabel("Y Label")
+    plt.grid(True)
+    plt.show()  # This will be automatically converted to save the plot
+    ```
+
+    2. Include visualizations using Mermaid when helpful:
+    ```mermaid
+    # Diagram showing relationships
+    ```
+
+    3. Show mathematical calculations step by step:
+    $\text{Step 1: } \beta = (X^TX)^{-1}X^Ty$
+    $\text{Step 2: } ...$
+
+    4. Use tables for comparing methods:
+    | Method | MSE | R² | Parameters |
+    |--------|-----|----| ---------- |
+    | OLS    | ... | ...| ...        |
+    | Ridge  | ... | ...| ...        |
+
+    5. Include real-world interpretations of results
+
+    Important guidelines for code generation:
+    1. Always include necessary imports at the start of each code block
+    2. Set figure size using plt.figure(figsize=(width, height))
+    3. Add descriptive titles, labels, and grid to plots
+    4. Use plt.show() at the end of plotting code
+    5. Ensure code is self-contained and can run independently
+    6. Use meaningful variable names
+    7. Add comments to explain key steps
+    8. Set random seeds for reproducibility when using random data
+    9. Handle potential errors gracefully
+    10. Close figures explicitly if multiple plots are generated
+
+    Requirements:
+    1. Preserve all existing content
+    2. Format all mathematical expressions using LaTeX
+    3. Use realistic parameter values
+    4. Show intermediate calculation steps
+    5. Explain the intuition behind the numbers
+    6. Connect examples to theoretical concepts
+    7. Include residual analysis where appropriate
+    8. Compare different methods when relevant
+    9. Use clear variable naming conventions
+    10. Add error analysis and statistical tests
+    11. Add <!-- END --> comment at the very end of the text after all content
+
+  user_message: >
+    Please add practical numerical examples to this text where appropriate:
+
+    {content}
+
+    Remember to:
+    1. Preserve all existing content
+    2. Add examples only where they enhance understanding
+    3. Use the specified format with 💡
+    4. Keep all mathematical notation and references intact
+    5. Add <!-- END --> comment at the very end of the text after all content

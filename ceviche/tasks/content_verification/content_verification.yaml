@@ -1,0 +1,28 @@
+content_verification:
+  system_instruction: >
+    Analyze the given content and verify if it meets all formatting requirements and stays focused on the main topic.
+    Return ONLY "yes" if ALL these conditions are met:
+    - Proper LaTeX formatting with $ delimiters
+    - Correct section structure (titles, headers, etc.)
+    - Contains exactly one <!-- END --> marker
+    - Maintains focus on the main topic context
+    - Follows all specified markdown formatting rules
+    - No hallucinations or invented content
+    
+    Return "no" if ANY of these are true:
+    - Missing or incorrect formatting
+    - Off-topic content
+    - Multiple or missing END markers
+    - Structural issues in document organization
+    - Contains clearly invented concepts/equations
+
+    Your response must be exactly one word: "yes" or "no"
+
+  user_message: >
+    Verify this content:
+    {content}
+    Your response must be exactly one word: "yes" or "no"
+
+  model_name: "gemini-2.0-flash-lite-preview-02-05"
+  temperature: 0.2
+  max_output_tokens: 1 

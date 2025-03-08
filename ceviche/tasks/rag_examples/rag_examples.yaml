@@ -1,0 +1,95 @@
+rag_examples:
+  generate_plots: true
+
+  system_instruction: >
+    Add practical numerical examples to theoretical sections related to Neural Information Retrieval and RAG, while preserving all existing content. Focus on illustrating concepts with tables and concise explanations. Avoid complex Mermaid diagrams.
+
+    Guidelines for adding examples:
+    1. Identify sections that would benefit from practical examples related to the context defined in job.json.
+    2. Add examples after theoretical explanations using this format:
+
+    > 💡 **Exemplo Numérico:**
+    [Example content with actual numbers, calculations, and visualizations]
+
+    Example types to add, focusing on Neural Information Retrieval and RAG concepts:
+    - **Term Frequency-Inverse Document Frequency (TF-IDF)** calculations with small example documents.
+    - **Cosine similarity** calculations between query and document vectors.
+    - **Dense retrieval** examples showing how embeddings are compared.
+    - **Sparse retrieval** examples (e.g., BM25) with different parameter settings.
+    - **Reranking** examples showing how scores change after applying a reranker.
+    - **Precision and Recall** calculations for a small retrieval system.
+    - **Mean Average Precision (MAP)** calculations.
+    - **Normalized Discounted Cumulative Gain (nDCG)** calculations.
+    - **Knowledge distillation** examples showing how a teacher model's knowledge is transferred to a student model.
+    - **Contrastive learning** examples with positive and negative pairs.
+    - **Chunking strategies** comparison table.
+    - **Prompt engineering** examples for different RAG scenarios.
+
+    Required components:
+    1. Use Python code with numpy/scipy/sklearn/pytorch when appropriate:
+    ```python
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    # Your code here
+    
+    plt.figure(figsize=(10, 6))
+    # Plot generation code
+    plt.title("Descriptive Title")
+    plt.xlabel("X Label")
+    plt.ylabel("Y Label")
+    plt.grid(True)
+    plt.show()  # This will be automatically converted to save the plot
+    ```
+
+    2. Include visualizations using Mermaid *only for simple diagrams*. Prefer tables.
+
+    3. Show mathematical calculations step by step:
+    $\text{Step 1: Calculate TF-IDF}$
+    $\text{Step 2: Calculate Cosine Similarity}$
+
+    4. Use tables for comparing methods and results:
+    | Method        | Precision | Recall | MAP   | nDCG  |
+    |---------------|-----------|--------|-------|-------|
+    | BM25          | 0.7       | 0.6    | 0.65  | 0.72  |
+    | Dense (DPR)   | 0.8       | 0.75   | 0.78  | 0.85  |
+    | Hybrid        | 0.85      | 0.8    | 0.82  | 0.88  |
+
+    5. Include real-world interpretations of results.
+
+    Important guidelines for code generation:
+    1. Always include necessary imports at the start of each code block.
+    2. Set figure size using plt.figure(figsize=(width, height)).
+    3. Add descriptive titles, labels, and grid to plots.
+    4. Use plt.show() at the end of plotting code.
+    5. Ensure code is self-contained and can run independently.
+    6. Use meaningful variable names.
+    7. Add comments to explain key steps.
+    8. Set random seeds for reproducibility when using random data.
+    9. Handle potential errors gracefully.
+    10. Close figures explicitly if multiple plots are generated.
+
+    Requirements:
+    1. Preserve all existing content.
+    2. Format all mathematical expressions using LaTeX.
+    3. Use realistic parameter values.
+    4. Show intermediate calculation steps.
+    5. Explain the intuition behind the numbers.
+    6. Connect examples to theoretical concepts.
+    7. Include residual analysis where appropriate (less relevant for RAG, but keep in mind).
+    8. Compare different methods when relevant.
+    9. Use clear variable naming conventions.
+    10. Add error analysis and statistical tests (e.g., significance of retrieval improvements).
+    11. Add <!-- END --> comment at the very end of the text after all content.
+
+  user_message: >
+    Please add practical numerical examples to this text where appropriate, focusing on Neural Information Retrieval and RAG concepts:
+
+    {content}
+
+    Remember to:
+    1. Preserve all existing content.
+    2. Add examples only where they enhance understanding.
+    3. Use the specified format with 💡.
+    4. Keep all mathematical notation and references intact.
+    5. Add <!-- END --> comment at the very end of the text after all content. 

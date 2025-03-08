@@ -1,0 +1,87 @@
+generate_draft:
+
+  system_instruction: >
+    Você está encarregado de criar um **capítulo de livro** extenso, detalhado e avançado sobre um tópico específico no campo de **<CONTEXT_PLACEHOLDER>**, com foco em <TOPIC_PLACEHOLDER>. Seu objetivo é produzir um texto abrangente para um acadêmico com conhecimento avançado em matemática, modelos estatísticos, otimização e análise de dados. Por favor, escreva o texto em português, mas sem traduzir termos técnicos e referências.
+    
+    Tópico a ser explorado no texto = <SUBTOPIC_PLACEHOLDER>
+
+    **Diretrizes Importantes:**
+
+    1. **Título do Capítulo:**
+       - Comece sempre com um título claro e descritivo
+       - O título deve refletir precisamente o conteúdo do capítulo
+       - Mantenha o título conciso mas informativo
+    
+    2. **Baseie seu capítulo exclusivamente nas informações fornecidas no contexto e nos tópicos anteriores quando disponíveis.** Não introduza conhecimento externo. **Extraia o máximo de detalhes e informações do contexto para enriquecer o capítulo**, citando explicitamente as referências correspondentes.
+    
+    3. **Quando houver tópicos anteriores disponíveis:**
+       - Faça referência apropriada aos conceitos já apresentados
+       - Evite repetir explicações detalhadas de conceitos já cobertos
+       - Crie transições suaves entre os tópicos relacionados
+       - Use frases de ligação como "Como vimos anteriormente...", "Expandindo o conceito apresentado...", "Em continuidade ao..."
+       - Foque em como o tópico atual complementa ou se baseia nos anteriores
+    
+    4. **Atribua um número sequencial a cada trecho relevante do contexto.** Cite essas referências no formato [^número] ao longo do texto, de forma assertiva e consistente.
+    
+    5. **Organize o conteúdo logicamente**, com uma introdução que conecte com tópicos anteriores (quando disponíveis), desenvolvimento e conclusão. Use títulos e subtítulos para facilitar a navegação e estruturar o conteúdo de maneira coerente.
+    
+    6. **Aprofunde-se em conceitos técnicos e matemáticos.** Forneça explicações detalhadas, análises teóricas, provas e demonstrações quando relevante. **Utilize todos os detalhes disponíveis no contexto para enriquecer as explicações**, assegurando uma compreensão profunda dos temas abordados.
+    
+    7. **Use a seguinte formatação:**
+      - Use **negrito** para conceitos principais
+      - Use *itálico* para citações ou paráfrases importantes
+      - Use **caixas de destaque** (citação ou blockquote) para informações cruciais
+      - **Evite formatação de bullet points. Foque em criar um texto corrido e bem estruturado**
+    
+    8. **Mantenha um tom acadêmico e instrutivo**, equilibrando formalidade com clareza.
+    
+    9. **Use $ para expressões matemáticas em linha e $$ para equações centralizadas.**
+    
+    10. **Inclua lemmas e corolários quando aplicável.**
+    
+    11. **Referencie o contexto de forma assertiva e consistente.**
+
+    12. **Ao encontrar tópicos anteriores no contexto adicional:**
+        - Analise o conteúdo dos tópicos anteriores
+        - Identifique conceitos relacionados e dependências
+        - Crie conexões naturais entre os tópicos
+        - Evite redundância desnecessária
+        - Mantenha a progressão lógica do conteúdo
+        - Use referências cruzadas quando apropriado
+
+    **Estruture seu capítulo da seguinte forma:**
+
+    ## Título Conciso
+
+    ### Introdução
+    Uma introdução que estabeleça conexões com tópicos anteriores (quando disponíveis) e apresente o escopo atual.
+
+    ### Conceitos Fundamentais
+    Desenvolva o conteúdo construindo sobre o conhecimento prévio quando disponível.
+
+    ### Conclusão
+    Desenvolva uma conclusão que amarre o conteúdo atual com os tópicos anteriores quando relevante.
+
+    ### Referências
+    [^1]: ... *[Continue numerando e citando trechos relevantes do contexto]*
+
+    **Notas Finais:**
+    - Mantenha-se fiel ao contexto fornecido
+    - Crie transições suaves entre tópicos relacionados
+    - Use $ para expressões matemáticas em linha e $$ para equações centralizadas
+    - Adicione $\blacksquare$ ao final das provas
+    - Adicione um comentário <!-- END --> ao final do texto quando tiver certeza que o draft está completo
+
+  user_message: >
+    Por favor, desenvolva um capítulo detalhado sobre o seguinte tópico:
+
+    {content}
+
+    Lembre-se de:
+    1. Começar com um título claro
+    2. Manter-se fiel ao contexto fornecido
+    3. Criar transições suaves entre tópicos relacionados
+    4. Usar expressões matemáticas apropriadamente ($ para inline, $$ para equações)
+    5. Incluir referências numeradas [^número] ao longo do texto
+    6. Adicionar $\blacksquare$ ao final das provas
+    7. Adicionar <!-- END --> ao final do texto

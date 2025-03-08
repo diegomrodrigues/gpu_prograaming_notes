@@ -1,0 +1,51 @@
+cleanup:
+  model_name: gemini-2.0-flash
+
+  system_instruction: >
+    Remove any prompt artifacts or instructions that were accidentally included in the generated text while preserving all actual content. 
+
+    Examples of text to remove:
+    - "Seu capítulo deve ser construído..."
+    - "Baseie seu capítulo exclusivamente..."
+    - "Organize o conteúdo logicamente..."
+    - "Use $ para expressões matemáticas..."
+    - "Adicione lemmas e corolários..."
+    - "Lembre-se de usar $ em vez de..."
+    - "Tenha cuidado para não se desviar..."
+    - "Exemplos técnicos devem ser apenas em Python..."
+    - "Não traduza nomes técnicos..."
+    - "Incorpore diagramas e mapas mentais..."
+    - "Continue explicando em detalhe..."
+    - "Deseja que eu continue com as próximas seções?"
+    - References to "o contexto" or "conforme indicado no contexto"
+    - Meta-instructions about formatting or structure
+    - Any text discussing how to use Mermaid, LaTeX, or image tags
+    - Instructions about how to write proofs or theorems
+    - References to [^X], [^Y], [^Z] without actual content
+    - Placeholder text like "{{ X }}" or "<X>"
+
+    Guidelines:
+    1. Preserve all actual content, including:
+      - Mathematical formulas and equations
+      - Technical explanations and proofs
+      - Theorems, lemmas, and corolários
+      - Diagrams and image descriptions
+      - References with actual content [^n]
+      - Section titles and headers
+      - Mermaid diagrams with actual content
+    2. Remove only meta-instructions and prompt artifacts
+    3. Ensure the flow remains natural after removing artifacts
+    4. Keep mathematical notation intact ($, $$)
+    5. Preserve formatting (**, *, >, emojis) when used for actual content
+    6. Keep proof endings ($\blacksquare$) but remove instructions about using them
+    7. Remove any "Nota:" or "Importante:" sections that contain only instructions
+    8. Keep actual notes marked with emojis (⚠️❗✔️💡) if they contain technical content
+    9. Add <!-- END --> comment at the very end of the text after all content
+  
+  user_message: >
+    Please clean up any prompt artifacts or instructions from this text while preserving all actual content:
+
+    {content}
+
+    Remember to keep all mathematical formulas, technical content, and structural elements intact.
+    Also, add <!-- END --> comment at the very end of the text after all content

@@ -1,0 +1,93 @@
+inject_images:
+  model_name: gemini-2.0-pro-exp-02-05
+  temperature: 0.5
+
+  system_instruction: >
+    Analyze the content and available images from the images.md catalog. Insert relevant images using Markdown syntax where they can enhance understanding. Follow these guidelines:
+
+    1. Images are documented in the catalog with:
+       - Figure titles (## Figure1)
+       - Image markdown: ![legenda](./images/figure1.jpg)
+       - Detailed descriptions
+    
+    2. When inserting images:
+       - Use the exact markdown syntax from the catalog
+       - Change the path from ./images to ./../images
+       - Keep the original legenda
+       - Place images near relevant content
+       - Maintain all original content
+    
+    3. Format Guidelines:
+       - Original path: ![legenda](./images/figure1.jpg)
+       - Modified path: ![legenda](./../images/figure1.jpg)
+       - Place a blank line before and after each image
+    
+    4. Critical Error Prevention:
+       - NEVER change image extensions (e.g., .jpg to .png)
+       - ONLY use filenames exactly as they appear in the catalog
+       - DO NOT invent or modify image filenames
+       - DO NOT modify image paths except for changing ./images to ./../images
+       - If unsure about an image reference, DO NOT include it
+       - DO NOT include images in the conclusion or reference sections
+    
+    5. Validation Steps:
+       - Before inserting an image, verify it exists in the catalog
+       - Confirm the exact filename and extension match the catalog
+       - Double-check the path format follows the guidelines
+       - Ensure the legenda matches the catalog entry
+    
+    6. Add <!-- END --> at the very end of the content
+
+    Example Input Catalog:
+    ## Figure1
+    ![Architecture Diagram](./images/figure1.jpg)
+    Shows the system architecture with components.
+
+    ## Figure2
+    ![Workflow Process](./images/figure2.jpg)
+    Illustrates the data processing workflow.
+
+    Example Input Content:
+    "The system architecture consists of multiple components that work together. 
+    The data processing follows a specific workflow to ensure accuracy."
+
+    Example Correct Output:
+    "The system architecture consists of multiple components that work together.
+
+    ![Architecture Diagram](./../images/figure1.jpg)
+
+    The data processing follows a specific workflow to ensure accuracy.
+
+    ![Workflow Process](./../images/figure2.jpg)
+    "
+
+    Common Errors to Avoid:
+    Input Content: "The architecture diagram shows the system components."
+
+    ❌ WRONG: "The architecture diagram shows the system components.
+    ![Architecture](./../images/architecture.jpg)"  # Invented filename
+
+    ❌ WRONG: "The architecture diagram shows the system components.
+    ![Architecture Diagram](./../images/figure1.png)"  # Wrong extension
+
+    ✅ CORRECT: "The architecture diagram shows the system components.
+
+    ![Architecture Diagram](./../images/figure1.jpg)
+    "
+
+  user_message: >
+    Available Images Catalog:
+    {images_content}
+
+    Enhance the content by adding relevant images from the catalog:
+
+    {content}
+
+    Remember to:
+    - Only add images that enhance understanding
+    - Use exact image markdown from the catalog, only changing ./images to ./../images
+    - Place images near their contextual references
+    - Preserve all original content
+    - Never modify image extensions or filenames
+    - Never include images in the conclusion or reference sections
+    - Add <!-- END --> at the end

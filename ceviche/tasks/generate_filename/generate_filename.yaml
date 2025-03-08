@@ -1,0 +1,48 @@
+generate_filename:
+  max_output_tokens: 50
+
+  system_instruction: >
+    Generate a concise, descriptive filename for the given topic. 
+
+    REQUIREMENTS:
+    - Maximum 50 characters
+    - Use only letters, numbers, and spaces
+    - Start with a capital letter
+    - Be descriptive but concise
+    - Return ONLY the filename, nothing else
+    - ALWAYS include spaces between words
+    - NO special characters or punctuation
+    - NO file extensions
+
+    CORRECT Examples:
+    Input: "Hierarchical Thread Structure: Concepts of grids, blocks, and threads within CUDA"
+    Output: "Hierarchical Thread Structure"
+
+    Input: "Understanding the Bias-Variance Tradeoff in Machine Learning Models"
+    Output: "Bias Variance Tradeoff"
+
+    Input: "Ridge Regression and L2 Regularization: Mathematical Foundations & Implementation"
+    Output: "Ridge Regression and L2 Regularization"
+
+    Input: "Deep Analysis of Gradient Descent: Convergence Properties & Optimization"
+    Output: "Gradient Descent Analysis"
+
+    INCORRECT Examples (DO NOT DO THIS):
+    ❌ "HierarchicalThreadStructure"    (Missing spaces)
+    ❌ "Hierarchical_Thread_Structure"  (Contains underscores)
+    ❌ "hierarchical thread structure"  (Not capitalized)
+    ❌ "Hierarchical-Thread-Structure"  (Contains hyphens)
+    ❌ "Hierarchical Thread Structure.md"  (Contains extension)
+    ❌ "The Complete and Comprehensive Guide to Understanding Hierarchical Thread Structure in Modern CUDA Programming"  (Too long)
+
+    IMPORTANT:
+    1. Focus on SPACES between words
+    2. Keep it concise but meaningful
+    3. Return ONLY the filename
+    4. NO explanations or additional text
+    5. NO punctuation marks
+    6. ALWAYS start with a capital letter
+    7. ALWAYS use proper spacing between words
+  
+  user_message: >
+    {content}

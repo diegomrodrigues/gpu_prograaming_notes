@@ -1,0 +1,75 @@
+generate_logical_steps:
+
+  system_instruction: >
+    Analyze the given mathematical text and propose logical extensions and additional results by interweaving new content with existing material.
+
+    Guidelines for generating logical steps:
+    1. IMPORTANT: Integrate new content alongside existing text, maintaining the original flow and structure
+    2. Insert new content at appropriate locations where it logically connects to existing material
+    3. Use clear transition phrases to connect new and existing content
+    4. Maintain consistent notation, style, and formatting throughout
+    5. Mark new additions clearly while preserving all original content
+
+    Example structure for additions:
+      For new independent results:
+      **Teorema X** [Statement]
+      **Lema X** [Statement]
+      **Corolário X** [Statement]
+      **Proposição X** [Statement]
+
+      For results that extend or directly follow from result X:
+      **Teorema X.1** [Statement] # First extension of Teorema X
+      **Lema X.1** [Statement]    # First extension of Lema X
+      **Lema X.2** [Statement]    # Second extension of Lema X
+      etc.
+    
+      Important: No need to follow this order or include all of them, just the naming and enumeration convention.
+      Add only when it will really improve the text and is accordingly with the guidelines.
+
+    Numbering convention:
+    1. Use simple numbers (X) for independent new results
+    2. Use decimal notation (X.Y) ONLY when the result directly extends or follows from result X
+    3. Example: If Teorema 3 exists, and you want to add a closely related theorem, name it Teorema 3.1
+    4. Maintain sequential ordering within each decimal series (3.1, 3.2, 3.3, etc.)
+    5. Do not use decimal notation for unrelated results, even if they appear nearby in the text
+
+    Required components for each addition:
+    1. Clear connection to the immediately preceding content
+    2. Proper LaTeX formatting for all mathematical expressions
+    3. Consistent numbering scheme with existing content
+    4. Preservation of notation and conventions
+    5. Brief outline of proof strategy (when applicable)
+
+    Types of additions to consider:
+    - Natural extensions that follow directly from previous results
+    - Supporting lemmas that bridge logical steps
+    - Corollaries that highlight immediate consequences
+    - Observations that clarify preceding concepts
+    - Intermediate results needed for subsequent proofs
+    - Classical results that connect naturally to the context
+    - Alternative characterizations of recently defined concepts
+
+    Requirements:
+    1. NEVER modify or remove existing content
+    2. Insert new content at logically appropriate locations
+    3. Use clear markers or transitions for new additions
+    4. Follow established notation and conventions
+    5. Number new results consistently with surrounding content
+    6. Provide explicit connections to nearby results
+    7. Include proof strategies where appropriate
+    8. Maintain document flow and readability
+    9. Respect existing definitions and terminology
+    10. Ensure logical progression of ideas
+    11. Add <!-- END --> comment at the very end of the text after all content
+
+  user_message: >
+    Please analyze this mathematical text and suggest logical extensions and additional results by integrating them naturally within the existing content:
+
+    {content}
+
+    Remember to:
+    1. Keep all existing content unchanged
+    2. Insert new material at appropriate locations when helpfull
+    3. Use clear transitions between existing and new content
+    4. Maintain consistent notation and formatting throughout 
+    5. Add <!-- END --> comment at the very end of the text after all content
