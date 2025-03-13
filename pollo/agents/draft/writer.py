@@ -7,6 +7,7 @@ from langchain_core.runnables import Runnable, RunnableLambda
 from pydantic import BaseModel, Field
 import yaml
 from pathlib import Path
+import os
 
 from pollo.agents.topics.generator import Topic
 from pollo.utils.gemini import GeminiChatModel
@@ -19,6 +20,8 @@ class DraftSubtaskState(TypedDict):
     draft: Optional[str]
     cleaned_draft: Optional[str]
     filename: Optional[str]
+    topic_index: Optional[int]
+    subtopic_index: Optional[int]
     status: Literal["pending", "draft_generated", "cleaned", "filename_generated", "error"]
 
 class DraftWritingState(TypedDict):
@@ -194,7 +197,8 @@ class FilenameGeneratorTool(BaseTool):
         super().__init__()
         self.gemini = GeminiChatModel(
             model_name="gemini-2.0-flash",
-            temperature=0.2
+            temperature=0.2,
+            mock_response="Default Filename"
         )
         
         # Create a prompt template similar to the reference implementation
@@ -408,7 +412,9 @@ def process_subtopic(state: DraftWritingState) -> DraftWritingState:
         "subtopic": subtopic,
         "draft": None,
         "cleaned_draft": None,
-        "status": "pending"
+        "status": "pending",
+        "subtopic_index": state["current_subtopic_index"],
+        "topic_index": state["current_topic_index"]
     }
     
     # Execute subgraph
@@ -420,6 +426,9 @@ def process_subtopic(state: DraftWritingState) -> DraftWritingState:
         "subtopic": result["subtopic"],
         "draft": result.get("draft"),
         "cleaned_draft": result.get("cleaned_draft"),
+        "filename": result.get("filename"),
+        "topic_index": result["topic_index"],
+        "subtopic_index": result["subtopic_index"],
         "status": result["status"]
     }]
     
@@ -454,11 +463,39 @@ def advance_indices(state: DraftWritingState) -> DraftWritingState:
     return state
 
 def finalize_output(state: DraftWritingState) -> DraftWritingState:
-    """Finalize output structure"""
+    """Finalize output structure and write files to disk"""
+    # Filter completed drafts
+    completed_drafts = [d for d in state["drafts"] if d["status"] == "filename_generated"]
+    
+    # Group drafts by topic
+    drafts_by_topic = {}
+    for draft in completed_drafts:
+        topic_index = draft.get("topic_index", 0)
+        topic = draft["topic"]
+        if topic_index not in drafts_by_topic:
+            drafts_by_topic[topic_index] = {"topic": topic, "drafts": []}
+        drafts_by_topic[topic_index]["drafts"].append(draft)
+    
+    # Create directories and write files
+    output_dir = state["directory"]
+    for topic_index, topic_data in sorted(drafts_by_topic.items()):
+        # Create numbered topic directory
+        topic_dir_name = f"{topic_index+1:02d}. {topic_data['topic']}"
+        topic_path = os.path.join(output_dir, topic_dir_name)
+        os.makedirs(topic_path, exist_ok=True)
+        
+        # Write each draft to a file
+        for draft in sorted(topic_data["drafts"], key=lambda x: x.get("subtopic_index", 0)):
+            if draft.get("cleaned_draft") and draft.get("filename"):
+                file_path = os.path.join(topic_path, draft["filename"])
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(draft["cleaned_draft"])
+    
     return {
         **state,
         "status": "completed",
-        "drafts": [d for d in state["drafts"] if d["status"] == "filename_generated"]
+        "drafts": completed_drafts,
+        "output_directory": output_dir
     }
 
 # Subgraph node implementations
@@ -493,11 +530,20 @@ def generate_filename(state: DraftSubtaskState) -> DraftSubtaskState:
     """Generate a filename for the draft"""
     try:
         generator = FilenameGeneratorTool()
-        filename = generator.invoke({
+        base_filename = generator.invoke({
             "topic": state["topic"],
             "subtopic": state["subtopic"]
         })
-        return {**state, "filename": filename, "status": "filename_generated"}
+        
+        # Format filename with numbering prefix based on subtopic index
+        subtopic_index = state.get("subtopic_index", 0)
+        formatted_filename = f"{subtopic_index+1:02d}. {base_filename}"
+        
+        # Ensure it has .md extension if not already present
+        if not formatted_filename.lower().endswith('.md'):
+            formatted_filename += '.md'
+            
+        return {**state, "filename": formatted_filename, "status": "filename_generated"}
     except Exception as e:
         print(f"Error generating filename: {str(e)}")
         return {**state, "status": "error"}
@@ -506,11 +552,16 @@ def generate_filename(state: DraftSubtaskState) -> DraftSubtaskState:
 def generate_drafts_from_topics(
     directory: str,
     perspectives: List[str] = ["technical_depth"],
-    json_per_perspective: int = 3
+    json_per_perspective: int = 3,
+    output_dir: Optional[str] = None
 ) -> Dict:
     """Generate drafts from topics extracted from PDFs"""
     # Create the graph
     draft_writer = create_draft_writer()
+    
+    # Use output_dir if provided, otherwise use input directory
+    final_output_dir = output_dir if output_dir else os.path.join(directory, "generated_drafts")
+    os.makedirs(final_output_dir, exist_ok=True)
     
     # Prepare initial state
     initial_state = {
@@ -527,8 +578,9 @@ def generate_drafts_from_topics(
     # Run the graph
     final_state = draft_writer.invoke(initial_state)
     
-    # Return the drafts
+    # Return the drafts and output location
     return {
         "drafts": final_state.get("drafts", []),
-        "status": final_state.get("status", "unknown")
+        "status": final_state.get("status", "unknown"),
+        "output_directory": final_state.get("output_directory", final_output_dir)
     } 
