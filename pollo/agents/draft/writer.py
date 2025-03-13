@@ -18,7 +18,8 @@ class DraftSubtaskState(TypedDict):
     subtopic: str
     draft: Optional[str]
     cleaned_draft: Optional[str]
-    status: Literal["pending", "draft_generated", "cleaned", "error"]
+    filename: Optional[str]
+    status: Literal["pending", "draft_generated", "cleaned", "filename_generated", "error"]
 
 class DraftWritingState(TypedDict):
     directory: str
@@ -182,6 +183,54 @@ Ao compreender os princípios matemáticos, opções algorítmicas e consideraç
 """
 
 # Create Tool classes for draft generation and cleanup
+class FilenameGeneratorTool(BaseTool):
+    name: str = "filename_generator"
+    description: str = "Generates an appropriate filename for a subtopic"
+    gemini: Optional[GeminiChatModel] = None
+    generate_filename_prompt: Optional[ChatPromptTemplate] = None
+    chain: Optional[Runnable] = None
+
+    def __init__(self):
+        super().__init__()
+        self.gemini = GeminiChatModel(
+            model_name="gemini-2.0-flash",
+            temperature=0.2
+        )
+        
+        # Create a prompt template similar to the reference implementation
+        self.generate_filename_prompt =  load_chat_prompt_from_yaml(
+            Path(__file__).parent / "generate_filename.yaml",
+            default_system="You are an expert at organizing academic content. Your job is to create appropriate filenames for technical document sections.",
+            default_user="Generate an appropriate filename for a section about: {subtopic}. This section belongs to the chapter on {topic}. Return only the filename with an appropriate extension."
+        )
+        
+        # Create the LCEL chain
+        self._build_chain()
+    
+    def _build_chain(self):
+        """Build the LCEL chain for filename generation."""
+        # Format input for the chain
+        def format_input(inputs):
+            return {
+                "topic": inputs["topic"],
+                "subtopic": inputs["subtopic"]
+            }
+        
+        # Build the chain
+        self.chain = (
+            RunnableLambda(format_input) | 
+            self.generate_filename_prompt | 
+            self.gemini
+        )
+
+    def _run(self, topic: str, subtopic: str) -> str:
+        """Generate a filename for the given topic/subtopic."""
+        response = self.chain.invoke({
+            "topic": topic,
+            "subtopic": subtopic
+        })
+        return response.content.strip()
+
 class DraftGeneratorTool(BaseTool):
     name: str = "draft_generator"
     description: str = "Generates an initial draft for a subtopic"
@@ -280,6 +329,7 @@ def create_draft_subgraph() -> StateGraph:
     # Add nodes
     builder.add_node("generate_draft", generate_draft)
     builder.add_node("clean_draft", clean_draft)
+    builder.add_node("generate_filename", generate_filename)
     builder.add_node("handle_error", handle_draft_error)
 
     # Set edges
@@ -288,7 +338,8 @@ def create_draft_subgraph() -> StateGraph:
         "generate_draft",
         lambda s: "clean_draft" if s["draft"] else "handle_error"
     )
-    builder.add_edge("clean_draft", END)
+    builder.add_edge("clean_draft", "generate_filename")
+    builder.add_edge("generate_filename", END)
     builder.add_edge("handle_error", END)
 
     return builder.compile()
@@ -407,7 +458,7 @@ def finalize_output(state: DraftWritingState) -> DraftWritingState:
     return {
         **state,
         "status": "completed",
-        "drafts": [d for d in state["drafts"] if d["status"] == "cleaned"]
+        "drafts": [d for d in state["drafts"] if d["status"] == "filename_generated"]
     }
 
 # Subgraph node implementations
@@ -437,6 +488,19 @@ def clean_draft(state: DraftSubtaskState) -> DraftSubtaskState:
 def handle_draft_error(state: DraftSubtaskState) -> DraftSubtaskState:
     """Handle draft generation errors"""
     return {**state, "status": "error"}
+
+def generate_filename(state: DraftSubtaskState) -> DraftSubtaskState:
+    """Generate a filename for the draft"""
+    try:
+        generator = FilenameGeneratorTool()
+        filename = generator.invoke({
+            "topic": state["topic"],
+            "subtopic": state["subtopic"]
+        })
+        return {**state, "filename": filename, "status": "filename_generated"}
+    except Exception as e:
+        print(f"Error generating filename: {str(e)}")
+        return {**state, "status": "error"}
 
 # Main function to use the draft writer
 def generate_drafts_from_topics(
