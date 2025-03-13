@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 import yaml
 from pathlib import Path
 
+from pollo.agents.topics.generator import Topic
 from pollo.utils.gemini import GeminiChatModel
 from pollo.utils.prompts import load_chat_prompt_from_yaml
 
@@ -347,12 +348,12 @@ def initialize_processing(state: DraftWritingState) -> DraftWritingState:
 
 def process_subtopic(state: DraftWritingState) -> DraftWritingState:
     """Process current subtopic using subgraph"""
-    topic = state["topics"][state["current_topic_index"]]
-    subtopic = topic["sub_topics"][state["current_subtopic_index"]]
+    topic: Topic = state["topics"][state["current_topic_index"]]
+    subtopic = topic.sub_topics[state["current_subtopic_index"]]
     
     # Prepare subgraph input
     subtask_state = {
-        "topic": topic["topic"],
+        "topic": topic.topic,
         "subtopic": subtopic,
         "draft": None,
         "cleaned_draft": None,
@@ -378,17 +379,17 @@ def process_subtopic(state: DraftWritingState) -> DraftWritingState:
 # Helper functions
 def has_more_subtopics(state: DraftWritingState) -> bool:
     """Check if more subtopics need processing"""
-    current_topic = state["topics"][state["current_topic_index"]]
-    has_more_subtopics = (state["current_subtopic_index"] + 1) < len(current_topic["sub_topics"])
+    current_topic: Topic = state["topics"][state["current_topic_index"]]
+    has_more_subtopics = (state["current_subtopic_index"] + 1) < len(current_topic.sub_topics)
     has_more_topics = (state["current_topic_index"] + 1) < len(state["topics"])
     
     return has_more_subtopics or has_more_topics
 
 def advance_indices(state: DraftWritingState) -> DraftWritingState:
     """Advance topic/subtopic indices"""
-    current_topic = state["topics"][state["current_topic_index"]]
+    current_topic: Topic = state["topics"][state["current_topic_index"]]
     
-    if (state["current_subtopic_index"] + 1) < len(current_topic["sub_topics"]):
+    if (state["current_subtopic_index"] + 1) < len(current_topic.sub_topics):
         return {
             **state,
             "current_subtopic_index": state["current_subtopic_index"] + 1

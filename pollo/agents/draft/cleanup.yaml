@@ -44,7 +44,7 @@ prompt:
   user_message: >
     Please clean up any prompt artifacts or instructions from this text while preserving all actual content:
 
-    {content}
+    {draft}
 
     Remember to keep all mathematical formulas, technical content, and structural elements intact.
     Also, add <!-- END --> comment at the very end of the text after all content

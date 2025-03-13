@@ -73,9 +73,7 @@ prompt:
     - Adicione um comentário <!-- END --> ao final do texto quando tiver certeza que o draft está completo
 
   user_message: >
-    Por favor, desenvolva um capítulo detalhado sobre o seguinte tópico:
-
-    {content}
+    Por favor, desenvolva um capítulo detalhado sobre o seguinte "{subtopic}" tópico no contexto de "{topic}".
 
     Lembre-se de:
     1. Começar com um título claro
