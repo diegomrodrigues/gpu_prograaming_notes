@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 import yaml
 from pathlib import Path
 import os
+import operator
 
 from pollo.agents.topics.generator import Topic
 from pollo.utils.gemini import GeminiChatModel
@@ -36,7 +37,7 @@ class DraftWritingState(TypedDict, total=False):
     status: str
     current_batch: List[Dict]  # Batch of subtopics to process in parallel
     branching_factor: int      # Number of subtopics to process in parallel
-    branch_results: Dict[str, Dict]  # Container for branch results to avoid conflicts
+    branch_results: Annotated[Dict[str, Dict], operator.or_]  # Use operator.or_ as reducer for concurrent updates
 
 # Define mock responses for testing
 DRAFT_GENERATOR_MOCK = """
@@ -664,7 +665,7 @@ def process_subtopic_parallel(state: DraftWritingState, branch_id: int = 0) -> D
     
     # If batch index out of range, return unchanged state
     if branch_id >= len(batch):
-        return state
+        return {}  # Return empty dict instead of full state
     
     # Get topic and subtopic indices from batch
     subtopic_data = batch[branch_id]
@@ -690,21 +691,24 @@ def process_subtopic_parallel(state: DraftWritingState, branch_id: int = 0) -> D
     # Execute subgraph
     result = create_draft_subgraph().invoke(subtask_state)
     
-    # Store result in branch_results instead of directly in state
-    branch_results = state.get("branch_results", {})
-    branch_results[f"branch_{branch_id}"] = {
-        "topic": result["topic"],
-        "subtopic": result["subtopic"],
-        "draft": result.get("draft"),
-        "cleaned_draft": result.get("cleaned_draft"),
-        "filename": result.get("filename"),
-        "topic_index": result["topic_index"],
-        "subtopic_index": result["subtopic_index"],
-        "status": result["status"]
-    }
+    # Create a unique key for this branch result
+    branch_key = f"branch_{branch_id}"
     
-    # Return only the updated branch_results to avoid concurrent state updates
-    return {"branch_results": branch_results}
+    # Return branch_results with just this branch's result
+    return {
+        "branch_results": {
+            branch_key: {
+                "topic": result["topic"],
+                "subtopic": result["subtopic"],
+                "draft": result.get("draft"),
+                "cleaned_draft": result.get("cleaned_draft"),
+                "filename": result.get("filename"),
+                "topic_index": result["topic_index"],
+                "subtopic_index": result["subtopic_index"],
+                "status": result["status"]
+            }
+        }
+    }
 
 def finalize_batch(state: DraftWritingState) -> DraftWritingState:
     """Collect results from parallel branches and update state"""
