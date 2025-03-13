@@ -25,7 +25,7 @@ class DraftSubtaskState(TypedDict):
     directory: Optional[str]
     status: Literal["pending", "draft_generated", "cleaned", "filename_generated", "error"]
 
-class DraftWritingState(TypedDict):
+class DraftWritingState(TypedDict, total=False):
     directory: str
     perspectives: List[str]
     json_per_perspective: int
@@ -34,6 +34,8 @@ class DraftWritingState(TypedDict):
     current_subtopic_index: int
     drafts: List[Dict]
     status: str
+    current_batch: List[Dict]  # Batch of subtopics to process in parallel
+    branching_factor: int      # Number of subtopics to process in parallel
 
 # Define mock responses for testing
 DRAFT_GENERATOR_MOCK = """
@@ -401,15 +403,20 @@ def create_draft_subgraph() -> StateGraph:
 
     return builder.compile()
 
-# Parent graph implementation
-def create_draft_writer() -> StateGraph:
-    """Main graph that coordinates topic generation and draft writing"""
+# Modified parent graph implementation
+def create_draft_writer(branching_factor: int = 3) -> StateGraph:
+    """Main graph that coordinates topic generation and draft writing
+    
+    Args:
+        branching_factor: Number of subtopics to process in parallel
+    """
     builder = StateGraph(DraftWritingState)
     
     # Add main nodes
     builder.add_node("generate_topics", generate_topics)
     builder.add_node("initialize_processing", initialize_processing)
-    builder.add_node("process_subtopic", process_subtopic)
+    builder.add_node("prepare_batch", prepare_subtopic_batch)
+    builder.add_node("finalize_batch", finalize_batch)
     builder.add_node("finalize", finalize_output)
 
     # Add subgraph
@@ -419,12 +426,30 @@ def create_draft_writer() -> StateGraph:
     # Set edges
     builder.add_edge(START, "generate_topics")
     builder.add_edge("generate_topics", "initialize_processing")
-    builder.add_edge("initialize_processing", "process_subtopic")
+    builder.add_edge("initialize_processing", "prepare_batch")
     
-    # Conditional edges for processing loop
+    # Fan out for parallel processing
+    def branch_out(state: DraftWritingState):
+        return [f"subtopic_{i}" for i in range(len(state["current_batch"]))]
+    
+    # Dynamic branching based on batch
     builder.add_conditional_edges(
-        "process_subtopic",
-        lambda s: "process_subtopic" if has_more_subtopics(s) else "finalize"
+        "prepare_batch",
+        branch_out,
+        [f"subtopic_{i}" for i in range(branching_factor)]
+    )
+    
+    # Add parallel processing nodes
+    for i in range(branching_factor):
+        # Create a node for each potential parallel branch
+        node_name = f"subtopic_{i}"
+        builder.add_node(node_name, process_subtopic_parallel)
+        builder.add_edge(node_name, "finalize_batch")
+    
+    # Add conditional edges for processing loop
+    builder.add_conditional_edges(
+        "finalize_batch",
+        lambda s: "prepare_batch" if has_more_subtopics(s) else "finalize"
     )
     
     builder.add_edge("finalize", END)
@@ -451,6 +476,7 @@ def initialize_processing(state: DraftWritingState) -> DraftWritingState:
         "current_topic_index": 0,
         "current_subtopic_index": 0,
         "drafts": [],
+        "branching_factor": state.get("branching_factor", 3),
         "status": "processing"
     }
 
@@ -607,21 +633,141 @@ def generate_filename(state: DraftSubtaskState) -> DraftSubtaskState:
         print(f"Error generating filename: {str(e)}")
         return {**state, "status": "error"}
 
-# Main function to use the draft writer
+# New function definitions for parallel processing
+def prepare_subtopic_batch(state: DraftWritingState) -> DraftWritingState:
+    """Prepare a batch of subtopics for parallel processing"""
+    # Get current topic
+    if state["current_topic_index"] >= len(state["topics"]):
+        return {**state, "current_batch": []}
+    
+    topic = state["topics"][state["current_topic_index"]]
+    
+    # Calculate how many subtopics remain
+    remaining_subtopics = len(topic.sub_topics) - state["current_subtopic_index"]
+    
+    # Create batch of subtopic indices to process
+    batch = []
+    for i in range(min(remaining_subtopics, state.get("branching_factor", 3))):
+        batch.append({
+            "topic_index": state["current_topic_index"],
+            "subtopic_index": state["current_subtopic_index"] + i
+        })
+    
+    return {**state, "current_batch": batch}
+
+def process_subtopic_parallel(state: DraftWritingState, branch_id: int = 0) -> DraftWritingState:
+    """Process a single subtopic in parallel"""
+    # Get batch of subtopics
+    batch = state.get("current_batch", [])
+    
+    # If batch index out of range, return unchanged state
+    if branch_id >= len(batch):
+        return state
+    
+    # Get topic and subtopic indices from batch
+    subtopic_data = batch[branch_id]
+    topic_index = subtopic_data["topic_index"]
+    subtopic_index = subtopic_data["subtopic_index"]
+    
+    # Get topic and subtopic
+    topic = state["topics"][topic_index]
+    subtopic = topic.sub_topics[subtopic_index]
+    
+    # Prepare subgraph input
+    subtask_state = {
+        "topic": topic.topic,
+        "subtopic": subtopic,
+        "draft": None,
+        "cleaned_draft": None,
+        "status": "pending",
+        "subtopic_index": subtopic_index,
+        "topic_index": topic_index,
+        "directory": state["directory"]
+    }
+    
+    # Execute subgraph
+    result = create_draft_subgraph().invoke(subtask_state)
+    
+    # Return result for this specific branch
+    return {
+        **state,
+        f"branch_result_{branch_id}": {
+            "topic": result["topic"],
+            "subtopic": result["subtopic"],
+            "draft": result.get("draft"),
+            "cleaned_draft": result.get("cleaned_draft"),
+            "filename": result.get("filename"),
+            "topic_index": result["topic_index"],
+            "subtopic_index": result["subtopic_index"],
+            "status": result["status"]
+        }
+    }
+
+def finalize_batch(state: DraftWritingState) -> DraftWritingState:
+    """Collect results from parallel branches and update state"""
+    # Extract results from all branches
+    new_drafts = state.get("drafts", [])
+    
+    # Gather results from all branches
+    for i in range(len(state.get("current_batch", []))):
+        result_key = f"branch_result_{i}"
+        if result_key in state:
+            new_drafts.append(state[result_key])
+            
+    # Calculate how many subtopics were processed
+    batch_size = len(state.get("current_batch", []))
+    
+    # Update indices based on batch size
+    topic_index = state["current_topic_index"]
+    subtopic_index = state["current_subtopic_index"] + batch_size
+    
+    # Check if we need to move to the next topic
+    if topic_index < len(state["topics"]):
+        topic = state["topics"][topic_index]
+        if subtopic_index >= len(topic.sub_topics):
+            topic_index += 1
+            subtopic_index = 0
+    
+    # Create new state with updated indices and drafts
+    new_state = {
+        **state,
+        "current_topic_index": topic_index,
+        "current_subtopic_index": subtopic_index,
+        "drafts": new_drafts
+    }
+    
+    # Clean up temporary branch results from state
+    for i in range(len(state.get("current_batch", []))):
+        result_key = f"branch_result_{i}"
+        if result_key in new_state:
+            del new_state[result_key]
+    
+    return new_state
+
+# Modified function to generate drafts with branching factor
 def generate_drafts_from_topics(
     directory: str,
     perspectives: List[str] = ["technical_depth"],
-    json_per_perspective: int = 3
+    json_per_perspective: int = 3,
+    branching_factor: int = 3
 ) -> Dict:
-    """Generate drafts from topics extracted from PDFs"""
-    # Create the graph
-    draft_writer = create_draft_writer()
+    """Generate drafts from topics extracted from PDFs
+    
+    Args:
+        directory: Directory containing PDFs and for output
+        perspectives: List of perspectives to use for topic generation
+        json_per_perspective: Number of JSON files to generate per perspective
+        branching_factor: Number of subtopics to process in parallel
+    """
+    # Create the graph with specified branching factor
+    draft_writer = create_draft_writer(branching_factor)
         
     # Prepare initial state
     initial_state = {
         "directory": directory,
         "perspectives": perspectives,
         "json_per_perspective": json_per_perspective,
+        "branching_factor": branching_factor,
         "topics": [],
         "current_topic_index": 0,
         "current_subtopic_index": 0,
