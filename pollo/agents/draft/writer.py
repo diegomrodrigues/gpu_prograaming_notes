@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Optional, Dict, Literal, Any
+from typing import TypedDict, List, Optional, Dict, Literal, Any, Annotated
 from langgraph.graph import StateGraph, END, START
 from langchain_core.tools import BaseTool
 from langchain_core.prompts import ChatPromptTemplate
@@ -36,6 +36,7 @@ class DraftWritingState(TypedDict, total=False):
     status: str
     current_batch: List[Dict]  # Batch of subtopics to process in parallel
     branching_factor: int      # Number of subtopics to process in parallel
+    branch_results: Dict[str, Dict]  # Container for branch results to avoid conflicts
 
 # Define mock responses for testing
 DRAFT_GENERATOR_MOCK = """
@@ -443,7 +444,7 @@ def create_draft_writer(branching_factor: int = 3) -> StateGraph:
     for i in range(branching_factor):
         # Create a node for each potential parallel branch
         node_name = f"subtopic_{i}"
-        builder.add_node(node_name, process_subtopic_parallel)
+        builder.add_node(node_name, lambda state, i=i: process_subtopic_parallel(state, i))
         builder.add_edge(node_name, "finalize_batch")
     
     # Add conditional edges for processing loop
@@ -476,6 +477,7 @@ def initialize_processing(state: DraftWritingState) -> DraftWritingState:
         "current_topic_index": 0,
         "current_subtopic_index": 0,
         "drafts": [],
+        "branch_results": {},  # Initialize branch_results
         "branching_factor": state.get("branching_factor", 3),
         "status": "processing"
     }
@@ -688,31 +690,32 @@ def process_subtopic_parallel(state: DraftWritingState, branch_id: int = 0) -> D
     # Execute subgraph
     result = create_draft_subgraph().invoke(subtask_state)
     
-    # Return result for this specific branch
-    return {
-        **state,
-        f"branch_result_{branch_id}": {
-            "topic": result["topic"],
-            "subtopic": result["subtopic"],
-            "draft": result.get("draft"),
-            "cleaned_draft": result.get("cleaned_draft"),
-            "filename": result.get("filename"),
-            "topic_index": result["topic_index"],
-            "subtopic_index": result["subtopic_index"],
-            "status": result["status"]
-        }
+    # Store result in branch_results instead of directly in state
+    branch_results = state.get("branch_results", {})
+    branch_results[f"branch_{branch_id}"] = {
+        "topic": result["topic"],
+        "subtopic": result["subtopic"],
+        "draft": result.get("draft"),
+        "cleaned_draft": result.get("cleaned_draft"),
+        "filename": result.get("filename"),
+        "topic_index": result["topic_index"],
+        "subtopic_index": result["subtopic_index"],
+        "status": result["status"]
     }
+    
+    # Return only the updated branch_results to avoid concurrent state updates
+    return {"branch_results": branch_results}
 
 def finalize_batch(state: DraftWritingState) -> DraftWritingState:
     """Collect results from parallel branches and update state"""
-    # Extract results from all branches
+    # Extract results from branch_results
     new_drafts = state.get("drafts", [])
+    branch_results = state.get("branch_results", {})
     
-    # Gather results from all branches
-    for i in range(len(state.get("current_batch", []))):
-        result_key = f"branch_result_{i}"
-        if result_key in state:
-            new_drafts.append(state[result_key])
+    # Add all branch results to drafts
+    for result_key, result in branch_results.items():
+        if result:
+            new_drafts.append(result)
             
     # Calculate how many subtopics were processed
     batch_size = len(state.get("current_batch", []))
@@ -733,14 +736,9 @@ def finalize_batch(state: DraftWritingState) -> DraftWritingState:
         **state,
         "current_topic_index": topic_index,
         "current_subtopic_index": subtopic_index,
-        "drafts": new_drafts
+        "drafts": new_drafts,
+        "branch_results": {}  # Clear branch results for next batch
     }
-    
-    # Clean up temporary branch results from state
-    for i in range(len(state.get("current_batch", []))):
-        result_key = f"branch_result_{i}"
-        if result_key in new_state:
-            del new_state[result_key]
     
     return new_state
 
