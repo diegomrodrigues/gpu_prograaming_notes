@@ -1,0 +1,42 @@
+{
+  "topics": [
+    {
+      "topic": "Warps and Thread Execution",
+      "sub_topics": [
+        "CUDA kernels generate a grid of threads organized in a two-level hierarchy: a grid of 1D, 2D, or 3D blocks, each containing a 1D, 2D, or 3D array of threads. This structure enables transparent scalability in parallel execution, as blocks can execute in any order. Threads within a block should be treated as potentially executing in any sequence, requiring barrier synchronizations for correctness.",
+        "Thread blocks are partitioned into warps based on thread indices. For 1D arrays, threadIdx.x values within a warp are consecutive and increasing. Multi-dimensional thread blocks are linearly ordered before warp partitioning.  A typical warp size is 32 threads, but this can vary. Blocks that are not a multiple of the warp size are padded.",
+        "Warp execution is implemented using SIMD (Single Instruction, Multiple Data) hardware. This reduces hardware costs, lowers power consumption, and enables memory access optimizations. A single control unit fetches and decodes instructions, distributing the same control signal to multiple processing units, each handling a thread in the warp. Execution differences within a warp arise from different data operand values.",
+        "Control divergence occurs when threads within the same warp follow different control flow paths (e.g., if-else statements, loops with variable iteration counts).  This happens when decision conditions depend on threadIdx values. SIMD hardware handles divergence by executing multiple passes, sequentially executing threads on different paths, which increases execution time.",
+        "Reduction algorithms derive a single value (e.g., sum, max, min) from an array. Sequential reduction algorithms visit each element once. Parallel reduction algorithms, which resemble a tournament structure, perform reductions in multiple rounds for efficiency. Thread divergence can be reduced in reduction kernels through algorithm modifications, such as adding elements that are spatially separated, although some divergence may still remain in final iterations."
+      ]
+    },
+    {
+      "topic": "Global Memory Bandwidth",
+      "sub_topics": [
+        "CUDA applications leverage massive data parallelism, processing large datasets from global memory.  Techniques like memory coalescing and tiling with shared memory are crucial for optimizing data movement and efficient use of global memory bandwidth.",
+        "Global memory is implemented with DRAMs, where data bits are stored as charges in small capacitors. Reading data involves a relatively slow charge transfer process.  Modern DRAMs employ parallelism to increase data access rates; accessing one location also accesses consecutive locations, with multiple sensors operating concurrently for high-speed data transfer.",
+        "CUDA devices optimize memory access by organizing thread accesses into favorable patterns. Memory coalescing occurs when threads in a warp access consecutive global memory locations. The hardware combines these accesses into a single, consolidated access to consecutive DRAM locations, significantly improving bandwidth utilization.",
+        "C and CUDA use a row-major convention for placing multidimensional arrays into linear memory.  Adjacent row elements are consecutive, while elements in the same column are not.  This impacts memory access patterns.  In matrix multiplication, coalesced access happens when threads in a warp read columns; non-coalesced access happens when reading rows.",
+        "Shared memory can be used to enable memory coalescing, particularly when algorithms require row-wise data access. Tiled algorithms can load data into shared memory in a coalesced pattern. Once data is in shared memory, access patterns (row-wise or column-wise) have less impact on performance, as shared memory is a high-speed, on-chip memory."
+      ]
+    },
+    {
+      "topic": "Dynamic Partitioning of Execution Resources",
+      "sub_topics": [
+        "Streaming Multiprocessors (SMs) have execution resources (registers, shared memory, thread block slots, and thread slots) that are dynamically partitioned and assigned to threads.",
+        "Current CUDA devices have a fixed number of thread slots (e.g., 1,536), each accommodating one thread. These slots are dynamically partitioned among thread blocks during runtime. This allows SMs to execute either many blocks with few threads or a few blocks with many threads, increasing versatility compared to fixed partitioning.",
+        "Dynamic partitioning can lead to interactions between resource limitations. For example, limitations in block slots and thread slots can interact, potentially causing underutilization if not carefully managed.  The number of blocks and threads that can run concurrently on an SM can be limited by available registers.",
+        "Automatic variables in CUDA kernels are placed in registers. SMs dynamically partition registers, allowing more blocks with fewer register requirements or fewer blocks with higher register requirements. Register limitations can influence the number of concurrently executing blocks and threads."
+      ]
+    },
+    {
+      "topic": "Instruction Mix and Thread Granularity",
+      "sub_topics": [
+        "Algorithmic performance tuning often involves adjusting thread granularity \u2013 assigning more work to each thread while reducing the total thread count. This is particularly beneficial when there's redundant work between threads.",
+        "Each SM has limited instruction processing bandwidth. Eliminating redundant instructions (floating-point, load, branch, etc.) reduces pressure on this bandwidth, improving overall kernel execution speed.",
+        "In tiled matrix multiplication, multiple blocks might redundantly load the same data tiles. Merging thread blocks, so each thread calculates multiple output elements, can eliminate this redundancy and reduce global memory access.",
+        "While merging thread blocks reduces global memory access, it can increase register and shared memory usage. This, in turn, might decrease the number of blocks that can reside on an SM, potentially reducing parallelism. However, combining adjacent blocks can improve performance for large matrix multiplications by reducing redundant operations."
+      ]
+    }
+  ]
+}

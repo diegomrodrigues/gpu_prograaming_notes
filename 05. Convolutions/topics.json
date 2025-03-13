@@ -1,0 +1,47 @@
+{
+  "topics": [
+    {
+      "topic": "1D Parallel Convolution - A Basic Algorithm",
+      "sub_topics": [
+        "Calculating all output elements in a convolution can be done in parallel, making it an ideal problem for parallel computing using CUDA.",
+        "A 1D convolution CUDA kernel receives as input pointers to the input array (N), input mask (M), and output array (P), as well as the mask size (Mask_Width) and the size of the input/output arrays (Width).",
+        "Threads are organized in a 1D grid, where each thread calculates one output element.  The output element index is calculated using blockIdx.x, blockDim.x, and threadIdx.x.",
+        "For odd-sized masks and symmetrical convolution, the calculation of each output element P[i] uses input elements from N[i-n] to N[i+n], where n = Mask_Width / 2. A simple loop can be used to perform this calculation.",
+        "The Pvalue variable accumulates intermediate results in a register to save DRAM bandwidth. A 'for' loop accumulates the contributions of neighboring elements to the output element P.",
+        "Boundary condition handling within the CUDA kernel involves checking if the required input elements are within the bounds of the input array. Out-of-bounds elements (ghost elements) receive a default value (usually 0).  An 'if' statement within the loop tests for ghost elements. Threads calculating P output elements near the left or right ends of the P array deal with ghost elements, resulting in control flow divergence.",
+        "Declaring constant memory variables with `__constant__` makes them visible to all thread blocks and unchangeable during kernel execution. The host code needs to allocate and copy constant memory variables differently from global memory variables using functions like `cudaMemcpyToSymbol()`."
+      ]
+    },
+    {
+      "topic": "Constant Memory and Caching",
+      "sub_topics": [
+        "The mask array (M) in convolution is generally small, its contents do not change during kernel execution, and all threads need to access it; this makes it an excellent candidate for constant memory.",
+        "Constant memory in CUDA is visible to all thread blocks but cannot be altered by threads during kernel execution. Its size is limited and may vary between devices. The host code needs to allocate and copy to constant memory using special functions, like `cudaMemcpyToSymbol()`.",
+        "Constant memory variables are accessed by kernel functions like global variables; their pointers do not need to be passed to the kernel as parameters. It's important to follow C language scoping rules for global variables.",
+        "The CUDA runtime aggressively caches constant memory variables, as it knows they will not be modified during kernel execution. Caches are on-chip memories that reduce the number of variables that need to be accessed from DRAM, reducing latency and increasing performance. There are multiple levels of caches, with L1 being the fastest and closest to the processor core.",
+        "Using constant memory variables eliminates cache coherence issues since they are not altered during kernel execution. The hardware can aggressively cache the values of constant variables in L1 caches and optimize the broadcast of a value to a large number of threads.",
+        "The ratio between floating-point arithmetic calculation and global memory accesses is low in the basic kernel, which limits performance. Techniques to reduce the number of global memory accesses are needed."
+      ]
+    },
+    {
+      "topic": "Tiled 1D Convolution with Halo Elements",
+      "sub_topics": [
+        "Tiled convolution addresses the memory bandwidth issue. Threads collaborate to load input elements into an on-chip memory (shared memory) and then access that memory for subsequent use. Each block processes an 'output tile,' which is the collection of output elements processed by each block.",
+        "Boundary tiles, such as the leftmost or rightmost tile, require loading ghost elements to handle boundary conditions.",
+        "Halo elements (or skirt elements) are input elements that are loaded into multiple shared memories; internal elements are used uniquely by a single block and loaded into a single shared memory.",
+        "When loading an input tile into shared memory, the left halo elements are loaded using the last threads of the previous block, while the internal elements are loaded using the appropriate thread index. Ghost elements are handled through conditional checks and assignment of a default value (usually 0).",
+        "Barrier synchronization using `__syncthreads()` is essential after loading the elements to ensure all data is available before calculations begin.",
+        "The tiled 1D convolution kernel is more complex than the basic kernel, but it reduces the number of DRAM accesses for the N elements. The improvement in the ratio between arithmetic operations and memory accesses should be evaluated."
+      ]
+    },
+    {
+      "topic": "A Simpler Tiled 1D Convolution - General Caching",
+      "sub_topics": [
+        "More recent GPUs, such as Fermi GPUs, provide general L1 and L2 caches. Blocks can take advantage of the fact that their halo elements may already be present in the L2 cache due to accesses by neighboring blocks. The L1 cache is private to each SM, and the L2 cache is shared among all SMs.",
+        "Instead of loading halo elements into shared memory, a simpler approach loads only the internal elements of the tile into shared memory (N_ds).",
+        "While barrier synchronization is still needed before using elements in N_ds, the loop that calculates the P elements becomes more complex, as it needs to add conditions to check for the use of halo elements and ghost elements. The handling of ghost elements is done with the same conditional statement used in the basic kernel.",
+        "The `This_tile_start_point` variable stores the index of the starting position of the tile being processed by the current block.  This and `Next_tile_start_point` are used to determine if the current access to an N element is within the current tile. If the element is within the tile, it is accessed from the N_ds array in shared memory; otherwise, it is accessed from the N array (which is expected to be in the L2 cache)."
+      ]
+    }
+  ]
+}

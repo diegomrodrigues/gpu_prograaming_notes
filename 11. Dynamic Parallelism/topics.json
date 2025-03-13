@@ -1,0 +1,71 @@
+{
+  "topics": [
+    {
+      "topic": "Background",
+      "sub_topics": [
+        "Real-world applications often employ algorithms that dynamically vary the amount of work performed, necessitating dynamic grids to optimize accuracy and performance. Fixed grids can lead to wasted resources or compromised accuracy, especially in scenarios like turbulence simulation where computational needs vary across the model.",
+        "Traditional CUDA systems launched all kernels from the host code, with a predetermined thread grid work amount, hindering the use of varied grid spacing in Single Program, Multiple Data (SPMD) kernels and favoring fixed-grid systems.",
+        "Dynamic grid approaches allow algorithms to direct more computational work to areas of the model that benefit from additional work, refining the grid in rapidly changing areas. This contrasts with static grids where fixed fine grids waste computation on simpler regions, and coarse grids compromise accuracy in complex areas.",
+        "Without dynamic parallelism, the host code must launch all kernels and handle the discovery of new work. With dynamic parallelism, threads that discover new work can launch kernels directly, reducing host burden and communication overhead."
+      ]
+    },
+    {
+      "topic": "Dynamic Parallelism Overview",
+      "sub_topics": [
+        "Dynamic parallelism allows programmers to write kernel launch instructions inside a kernel, enabling a kernel to launch new kernels.  This extends the original CUDA model where only host code could launch kernels.",
+        "The syntax for launching a kernel from within a kernel is identical to host-side launches: `kernel_name<<<Dg, Db, Ns, S>>>([kernel arguments])`.",
+        "The launch configuration parameters\u2014grid size (`Dg`), thread block size (`Db`), dynamically allocated shared memory (`Ns`), and associated stream (`S`)\u2014are specified the same way as in host-side launches.",
+        "`Dg` (of type `dim3`) specifies the dimensions and size of the grid, influencing parallelism and problem space partitioning.",
+        "`Db` (also `dim3`) defines the dimensions/size of each thread block, affecting shared memory usage, synchronization, and occupancy within the Streaming Multiprocessor (SM).",
+        "`Ns` (`size_t`) defines the dynamically allocated shared memory (in bytes) per thread block, in addition to statically allocated shared memory. It defaults to 0 if unspecified.",
+        "`S` (`cudaStream_t`) specifies the stream associated with the kernel call. The stream must be allocated within the same thread block and defaults to 0 if not provided."
+      ]
+    },
+    {
+      "topic": "Important Details",
+      "sub_topics": [
+        "Device configuration settings (e.g., shared memory, L1 cache size) and device limits are inherited from the parent kernel, ensuring consistent execution environments for child kernels.",
+        "CUDA API function calls within kernels can return error codes (of type `cudaError_t`), retrievable via `cudaGetLastError()`.  The error code is recorded per-thread.",
+        "Only inter-stream synchronization using `cudaStreamWaitEvent()` is supported within kernel functions.  `cudaEventSynchronize()`, timing with `cudaEventElapsedTime()`, and event querying via `cudaEventQuery()` are *not* supported. Dynamic parallelism `cudaEvents` must be created using `cudaEventCreateWithFlags()`.",
+        "Named and unnamed (NULL) streams are available, but named streams are private to the block where they are created. The host-side NULL stream's global synchronization semantic is *not* supported; all streams in a kernel should be created using `cudaStreamCreateWithFlags()` with the `cudaStreamNonBlocking` flag.",
+        "`cudaStreamSynchronize()` is unavailable within kernels. Only `cudaDeviceSynchronize()` can explicitly wait for launched work to complete.",
+        "A thread launching a new grid belongs to the *parent* grid; the launched grid is the *child* grid. The parent grid is not considered complete until all child grids created by its threads have completed.  The runtime ensures implicit synchronization between parent and child, forcing the parent to wait for all children to exit before it can exit.",
+        "A thread in the parent grid can only synchronize on grids launched by that thread, other threads in the same thread block, or streams created within the same thread block. Streams created by a thread exist only within the scope of that thread's block."
+      ]
+    },
+    {
+      "topic": "Memory Visibility",
+      "sub_topics": [
+        "Parent and child grids have coherent access to global memory, with weak consistency guarantees. A child grid's view of memory is fully consistent with the parent thread at two points: when the child grid is created and when it completes (signaled by a synchronization API call in the parent).",
+        "All global memory operations in the parent thread before child grid invocation are visible to the child grid. All child grid memory operations are visible to the parent after synchronization on the child grid's completion.",
+        "Zero-copy system memory has the same coherence and consistency guarantees as global memory. Kernels cannot allocate or free zero-copy memory but can use pointers passed from the host.",
+        "Constant memory (`__constant__`) is immutable and must be set by the host before the first kernel launch. It remains constant throughout the dynamic parallelism launch tree and is globally visible to all kernels.",
+        "Local memory is private to a thread and not visible outside. It is illegal to pass a local memory pointer as a launch argument to a child kernel.",
+        "Shared memory is private to an executing thread block. Passing a pointer to shared memory to a child kernel will result in undefined behavior.",
+        "Texture memory (read-only) accesses are performed on a memory region that may alias the writable global memory region. Coherence for texture memory is enforced at child grid invocation and completion."
+      ]
+    },
+    {
+      "topic": "Runtime Limitations",
+      "sub_topics": [
+        "Memory is allocated as backing-store for the parent kernel state during child launch synchronization. This memory footprint is difficult to quantify precisely, though each level of nesting requires a significant amount (around 150MB on a current-generation device). The system does detect when a parent exits without calling `cudaDeviceSynchronize` to reduce this memory usage.",
+        "The maximum *nesting depth* (number of levels of kernel launches) is hardware-limited to 64 and software-limited to 63 or less. The supported nesting level must be configured before the top-level kernel launch from the host.",
+        "`cudaMalloc` and `cudaFree` have slightly modified semantics between the host and device environments. Within the device, the total allocatable memory is limited to the size of the `device malloc()` heap.",
+        "There is no notification of ECC errors within CUDA kernels; ECC errors are reported only on the host side.",
+        "Unlimited named streams are supported per block, but the maximum platform concurrency is limited. If more streams are created than can support concurrent execution, some may serialize or alias.",
+        "Unlimited events are supported per block, but they consume device memory.  Creating too many events may reduce the concurrency of GPU-launched grids.",
+        "Launch pool storage, which tracks launched kernels, is virtualized between device and host memory. Configurable device memory is reserved for device-side launch pool storage to improve performance."
+      ]
+    },
+    {
+      "topic": "A More Complex Example",
+      "sub_topics": [
+        "Bezier curve calculation demonstrates a use case of recursive and adaptive subdivision of spline curves, illustrating variable child kernel launches according to workload.",
+        "In traditional CUDA, computing Bezier curves involves calculating a curvature measure and tessellating points. Variations in per-block work lead to decreased streaming multiprocessor utilization.",
+        "Dynamic parallelism improves Bezier curve calculations by splitting the computation into two kernels: `computeBezierLineCDP()` determines the amount of work for each control point, and `computeBezierLinePositions()` performs the tessellation calculation.",
+        "With this organization, the amount of work done for each set of control points by `computeBezierLineCDP()` is much less than the original `computeBezierLine()` kernel. Memory to store the computed Bezier curve points is dynamically determined and allocated.",
+        "Once a `computeBezierLinesCDP()` kernel thread determines the amount of work required by its set of control points, it launches the `computeBezierPositions()` kernel to do the work. In this example, each thread of the parent grid creates a new grid for its assigned set of control points."
+      ]
+    }
+  ]
+}

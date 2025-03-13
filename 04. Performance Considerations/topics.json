@@ -1,0 +1,43 @@
+{
+  "topics": [
+    {
+      "topic": "Warps and Thread Execution",
+      "sub_topics": [
+        "CUDA kernels are executed as a grid of threads, organized in a two-level hierarchy: a grid of blocks (1D, 2D, or 3D), and blocks containing an array of threads (1D, 2D, or 3D). Blocks can execute in any order, enabling transparent scalability.",
+        "Warps are the fundamental unit of execution in CUDA. A warp consists of a fixed number of threads (typically 32) that execute in SIMD fashion. A single control unit fetches and decodes instructions, sending the same signal to multiple processing units. CUDA devices use this strategy to bundle thread execution.",
+        "Thread blocks are partitioned into warps based on thread indices.  For 1D arrays, threadIdx.x values within a warp are consecutive and increasing (warp n starts at thread 32*n).  For multidimensional blocks, indices are linearized before partitioning.  Blocks not multiples of the warp size have the last warp padded.",
+        "SIMD hardware functions best when all threads in a warp follow the same execution path (control flow).  For if-else constructs, performance is optimal if all threads execute either the if *or* the else part.  Thread divergence occurs when threads in the same warp follow different paths.",
+        "In divergent situations, the SIMD hardware executes multiple passes, disabling threads that don't follow the current path. This increases execution time due to sequential processing of divergent paths.  Divergence can arise from if-else constructs or loops with variable iteration counts based on threadIdx.",
+        "Reduction algorithms derive a single value from an array. These algorithms can be sequential or parallel, with the parallel version resembling a tournament structure with multiple rounds. Each thread block in a parallel reduction reduces a section of the array using shared memory. _syncthreads() ensures all partial results are available before the next iteration."
+      ]
+    },
+    {
+      "topic": "Global Memory Bandwidth",
+      "sub_topics": [
+        "CUDA applications utilize massive data parallelism and process large amounts of global memory data. Efficient global memory access is crucial for CUDA kernel performance.  Techniques like memory coalescing and tiling maximize performance by efficiently moving data between global memory, shared memory, and registers.",
+        "Global memory in CUDA devices is implemented with DRAMs. Data bits are stored as electric charge in small capacitors within DRAM cells. Reading from DRAM is relatively slow due to the need to charge and sense these capacitors. Modern DRAMs employ parallelism to increase data access rates.",
+        "CUDA devices achieve high global memory access efficiency by organizing thread memory accesses into patterns. The ideal access pattern, called *memory coalescing*, occurs when all threads in a warp access consecutive global memory locations.  The hardware combines these accesses into a single, consolidated transaction, allowing DRAMs to deliver data near peak bandwidth.",
+        "Multidimensional array elements in C and CUDA are placed into linearly addressed memory using row-major convention. All elements in a row are placed in consecutive locations, and entire rows are placed one after another.  Coalesced access patterns depend on how threads access these array elements.",
+        "In matrix multiplication, coalesced memory access is achieved when threads in a warp read adjacent *columns*, not adjacent *rows*. If an algorithm inherently requires iteration along rows, shared memory can be used to enable coalescing. Data is first loaded into shared memory in a coalesced pattern and then accessed in the required pattern."
+      ]
+    },
+    {
+      "topic": "Dynamic Partitioning of Execution Resources",
+      "sub_topics": [
+        "Execution resources in a CUDA streaming multiprocessor (SM) include registers, shared memory, thread block slots, and thread slots. These resources are dynamically partitioned and assigned to threads to support their execution. Current generation CUDA devices typically have a fixed number of thread slots (e.g., 1,536).",
+        "Dynamic partitioning allows SMs to be versatile. They can execute many blocks with few threads each or few blocks with many threads each. This contrasts with fixed partitioning, which can waste resources if blocks don't fully utilize their fixed assignments.",
+        "Dynamic partitioning can create subtle interactions between resource limitations.  For instance, to fully utilize both block slots and thread slots, a minimum number of threads per block may be required. Register limitations can also affect the number of blocks running on each SM.",
+        "Automatic variables in a CUDA kernel are placed into registers. The number of registers used by a kernel can vary. Dynamic partitioning of registers allows the SM to accommodate more blocks if they require fewer registers and fewer blocks if they require more. Exceeding register limits can significantly reduce warp parallelism (a \"performance cliff\").",
+        "The CUDA Occupancy Calculator is a tool used to estimate the occupancy of a kernel (the number of resident warps on each SM) based on the kernel's resource usage, such as shared memory and registers."
+      ]
+    },
+    {
+      "topic": "Instruction Mix and Thread Granularity",
+      "sub_topics": [
+        "Thread granularity is a crucial factor in CUDA performance tuning. It is often advantageous to put more work into each thread and use fewer threads, especially when there is redundant work between threads. Increasing thread granularity reduces redundant instructions and improves kernel execution speed.",
+        "Each SM has limited instruction processing bandwidth. Every instruction, whether floating-point calculation, load, or branch, consumes this bandwidth. Eliminating redundant instructions relieves pressure on the processing bandwidth.",
+        "Tiled algorithms can be optimized by adjusting thread granularity. For example, in matrix multiplication, redundancy in loading tiles by multiple blocks can be eliminated by merging thread blocks. If each thread computes two output elements instead of one, global memory access is reduced, although this requires more registers and shared memory. This can potentially reduce the number of blocks on each SM, leading to insufficient parallelism for smaller matrices."
+      ]
+    }
+  ]
+}

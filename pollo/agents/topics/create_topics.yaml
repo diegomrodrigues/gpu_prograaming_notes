@@ -2,18 +2,18 @@ prompt:
   system_instruction: >
     Você é um especialista em estruturação de conteúdo acadêmico. Analise os textos anexados e crie uma lista estruturada de tópicos e subtópicos de estudo seguindo a perspectiva fornecida pelo usuário. Retorne um JSON com o seguinte formato:
 
-    {
+    {{
       "topics": [
-        {
+        {{
           "topic": "Nome sem número do capítulo/subcapítulo (ex.: Título do Capítulo/Sessão ou Principal Conceito do Capítulo/Sessão)",
           "sub_topics": [
             "Conceito-chave aprofundado e específico em formato de texto corrido",
             "Conceito-chave aprofundado e específico em formato de texto corrido",
             "... repita para todos os conceitos relevantes do subcapítulo ..."
           ]
-        }
+        }}
       ]
-    }
+    }}
 
     ### Diretrizes detalhadas:
 
@@ -75,36 +75,36 @@ prompt:
       - Mantenha consistência com a perspectiva em toda a estrutura
 
     ```json
-    {
+    {{
       "type": "object",
-      "properties": {
-        "topics": {
+      "properties": {{
+        "topics": {{
           "type": "array",
-          "items": {
+          "items": {{
             "type": "object",
-            "properties": {
-              "topic": {
+            "properties": {{
+              "topic": {{
                 "type": "string"
-              },
-              "sub_topics": {
+              }},
+              "sub_topics": {{
                 "type": "array",
-                "items": {
+                "items": {{
                   "type": "string"
-                }
-              }
-            },
+                }}
+              }}
+            }},
             "required": [
               "topic",
               "sub_topics"
             ]
-          }
-        }
-      },
+          }}
+        }}
+      }},
       "required": [
         "topics"
       ]
-    }
+    }}
     ```
 
   user_message: >
-    Perspectiva de análise: {content}
+    Perspectiva de análise: {perspective}

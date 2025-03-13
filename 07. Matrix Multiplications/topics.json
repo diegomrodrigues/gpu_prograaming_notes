@@ -1,0 +1,43 @@
+{
+  "topics": [
+    {
+      "topic": "Parallel Sparse Matrix-Vector Multiplication (SpMV)",
+      "sub_topics": [
+        "Sparse matrix computation is a parallel pattern where most elements are zeros, making storage and processing wasteful. Compaction techniques avoid storing/processing zero elements, introducing irregularity that can lead to underutilization of memory bandwidth, control flow divergence, and load imbalance in parallel computing. Parallel algorithms for sparse matrices are heavily dependent on the distribution of nonzero elements, influencing storage formats and processing methods.  These algorithms aim to balance compaction and regularization, as some formats achieve higher compaction at the cost of increased irregularity, while others maintain a more regular representation with modest compaction.",
+        "Sparse matrices arise in science, engineering, and financial modeling, representing coefficients in loosely coupled linear systems.  Storing these matrices requires formats like Compressed Sparse Row (CSR) that avoid storing zero elements. CSR stores only nonzero values in a 1D `data` array, along with `col_index[]` (column index of each nonzero value) and `row_ptr[]` (starting location of each row) to preserve the original structure.",
+        "Sparse linear systems are often solved using iterative methods like conjugate gradient, where the most time-consuming part is the SpMV (A \u00d7 X + Y) calculation. This has standardized library function interfaces and serves to illustrate trade-offs between storage formats.",
+        "A sequential SpMV implementation based on CSR uses function arguments like `num_rows` and arrays `data[]`, `row_ptr[]`, and `x[]`. It iterates through rows, calculating a dot product of the current row and vector x, using `col_index` to access elements for multiplication.",
+        "Parallel SpMV using CSR assigns each row's dot product calculation to a thread, exploiting the independence of row calculations.  A CUDA kernel uses `blockIdx.x * blockDim.x + threadIdx.x` to calculate the row index.  However, this approach suffers from non-coalesced memory accesses (adjacent threads accessing nonadjacent memory locations) and potential control flow divergence (due to varying numbers of nonzero elements per row). Execution and memory bandwidth efficiency are highly data-dependent."
+      ]
+    },
+    {
+      "topic": "Addressing SpMV Challenges with ELL and Hybrid Methods",
+      "sub_topics": [
+        "Padding and transposition, using the ELL storage format, address non-coalesced memory accesses and control divergence.  ELL, derived from ELLPACK, adds dummy (zero) elements to make all rows the same length as the row with the maximal number of nonzero elements and then lays out the padded matrix in column-major order (transposition).",
+        "With ELL, the SpMV kernel code is simpler. All threads iterate the same number of times in the dot product loop, eliminating control flow divergence. Dummy elements do not affect the result, and threads access adjacent memory locations, enabling memory coalescing. The kernel uses `num_elem` instead of `row_ptr` to indicate the number of elements in each row after padding.",
+        "However, ELL can be inefficient if a few rows have significantly more non-zero elements, leading to excessive padding. Hybrid methods, combining ELL and Coordinate (COO) formats, mitigate this.  COO stores each nonzero element with its row and column indices.  Excess elements from long rows are moved to a separate COO representation, reducing padding in ELL.",
+        "In a hybrid system, the CPU can perform SpMV/COO using its cache, while the GPU performs SpMV/ELL. The CPU converts CSR to ELL/COO, transfers the ELL data to the GPU for kernel execution, and adds the COO elements' contribution after the GPU completes the SpMV/ELL calculation. A parallel SpMV/COO kernel uses atomic operations for accumulation.",
+        "The removal of some elements from the ELL format into COO is a form of regularization technique."
+      ]
+    },
+    {
+      "topic": "SpMV Optimization: Sorting and Partitioning",
+      "sub_topics": [
+        "Sorting and partitioning rows based on length can further reduce padding overhead in ELL. This results in a Jagged Diagonal Storage (JDS) format, requiring a `jds_row_index` array to preserve original row indices during sorting.",
+        "After sorting, the matrix can be partitioned into sections with more uniform nonzero element counts per row. An ELL representation (or CSR on recent hardware) can be generated for each section.",
+        "JDS-ELL can be transposed to improve memory coalescing, especially on newer CUDA devices that have relaxed address alignment requirements. A JDS-CSR representation is also possible, and the transposition on newer devices eliminates padding in each section.",
+        "The host code is required to create the JDS representation and launch SpMV kernels for each section."
+      ]
+    },
+    {
+      "topic": "Sparse Matrix Background and Definitions",
+      "sub_topics": [
+        "Sparse matrices, characterized by a majority of zero elements, are common in scientific computing, engineering simulations, and financial modeling. Storing all elements directly is inefficient, motivating specialized storage formats and algorithms.",
+        "These matrices often represent coefficients in linear systems of equations (A \u00d7 X + Y = 0), where each row corresponds to an equation. Sparsity reflects loosely coupled systems where each equation involves only a small subset of variables.",
+        "The Compressed Sparse Row (CSR) format is a widely used method for storing sparse matrices. It uses three arrays: `data[]` (nonzero values), `col_index[]` (column indices), and `row_ptr[]` (starting location of each row, with `row_ptr[5]` storing the location of a nonexisting row for convenience). CSR reduces storage but introduces overhead with index arrays.",
+        "Markers are essential for reconstructing the original sparse matrix structure from compressed formats like CSR. `col_index[]` associates each value with its original column, and `row_ptr[]` allows retrieval of all nonzero elements for a given row.",
+        "Solving linear systems with sparse matrices often involves iterative methods (e.g., conjugate gradient for positive-definite matrices), where the most time-consuming part is SpMV."
+      ]
+    }
+  ]
+}
