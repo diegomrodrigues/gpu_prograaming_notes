@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 import yaml
 from pathlib import Path
 
-from pollo.agents.topics.generator import create_topic_generator, load_chat_prompt_from_yaml
 from pollo.utils.gemini import GeminiChatModel
+from pollo.utils.prompts import load_chat_prompt_from_yaml
 
 # Define state schemas
 class DraftSubtaskState(TypedDict):
@@ -325,13 +325,15 @@ def create_draft_writer() -> StateGraph:
 # Node implementations
 def generate_topics(state: DraftWritingState) -> DraftWritingState:
     """Generate topics structure using existing topic generator"""
+    from pollo.agents.topics.generator import create_topic_generator
+
     topic_generator = create_topic_generator()
     topics = topic_generator.invoke({
         "directory": state["directory"],
         "perspectives": state.get("perspectives", ["technical_depth"]),
         "json_per_perspective": state.get("json_per_perspective", 3)
     })
-    return {**state, "topics": topics["consolidated_topics"]["topics"]}
+    return {**state, "topics": topics["consolidated_topics"].topics}
 
 def initialize_processing(state: DraftWritingState) -> DraftWritingState:
     """Initialize processing state"""
