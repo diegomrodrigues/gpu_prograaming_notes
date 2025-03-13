@@ -421,10 +421,6 @@ def create_draft_writer(branching_factor: int = 3) -> StateGraph:
     builder.add_node("finalize_batch", finalize_batch)
     builder.add_node("finalize", finalize_output)
 
-    # Add subgraph
-    draft_subgraph = create_draft_subgraph()
-    builder.add_node("draft_subgraph", draft_subgraph)
-
     # Set edges
     builder.add_edge(START, "generate_topics")
     builder.add_edge("generate_topics", "initialize_processing")
