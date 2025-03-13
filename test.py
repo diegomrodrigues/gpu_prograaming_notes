@@ -9,7 +9,7 @@ os.environ["LANGSMITH_PROJECT"] = "pollo-create-topics"
 from pollo.agents.draft.writer import generate_drafts_from_topics
 
 drafts = generate_drafts_from_topics(
-    directory="."
+    directory="01. Data Parallelism"
 )
 
 
