@@ -22,6 +22,7 @@ class DraftSubtaskState(TypedDict):
     filename: Optional[str]
     topic_index: Optional[int]
     subtopic_index: Optional[int]
+    directory: Optional[str]
     status: Literal["pending", "draft_generated", "cleaned", "filename_generated", "error"]
 
 class DraftWritingState(TypedDict):
@@ -261,6 +262,8 @@ class DraftGeneratorTool(BaseTool):
     
     def _build_chain(self):
         """Build the LCEL chain for draft generation."""
+        from langchain_core.runnables import RunnableLambda
+        
         # Format input for the chain
         def format_input(inputs):
             return {
@@ -268,19 +271,69 @@ class DraftGeneratorTool(BaseTool):
                 "subtopic": inputs["subtopic"]
             }
         
+        # Process with files
+        def process_with_files(inputs):
+            prompt_args = inputs["prompt_args"]
+            model_inputs = inputs["model_inputs"]
+            files = inputs.get("files", [])
+            
+            # Call the model with files
+            return self.gemini.invoke(
+                model_inputs, 
+                files=files
+            )
+            
         # Build the chain
         self.chain = (
-            RunnableLambda(format_input) | 
-            self.generate_draft_prompt | 
-            self.gemini
+            RunnableLambda(lambda inputs: {
+                "prompt_args": inputs,
+                "model_inputs": format_input(inputs),
+                "files": inputs.get("files", [])
+            }) |
+            {
+                "prompt_args": lambda x: x["prompt_args"],
+                "model_inputs": lambda x: self.generate_draft_prompt.invoke(x["model_inputs"]),
+                "files": lambda x: x["files"]
+            } |
+            RunnableLambda(process_with_files)
         )
 
-    def _run(self, topic: str, subtopic: str) -> str:
-        """Generate a draft for the given subtopic."""
+    def _run(self, topic: str, subtopic: str, directory: str = None) -> str:
+        """Generate a draft for the given subtopic using PDFs if available."""
+        # If no directory provided, generate without files
+        if not directory:
+            response = self.chain.invoke({
+                "topic": topic,
+                "subtopic": subtopic
+            })
+            return response.content
+        
+        # Read PDF files
+        pdf_files = []
+        for file in Path(directory).glob("*.pdf"):
+            pdf_files.append(str(file))
+        
+        if not pdf_files:
+            # No PDFs found, generate without files
+            response = self.chain.invoke({
+                "topic": topic,
+                "subtopic": subtopic
+            })
+            return response.content
+        
+        # Upload the PDF files
+        uploaded_files = []
+        for pdf_file in pdf_files:
+            uploaded_file = self.gemini.upload_file(pdf_file, mime_type="application/pdf")
+            uploaded_files.append(uploaded_file)
+        
+        # Invoke the chain with files
         response = self.chain.invoke({
             "topic": topic,
-            "subtopic": subtopic
+            "subtopic": subtopic,
+            "files": uploaded_files
         })
+        
         return response.content
 
 class DraftCleanupTool(BaseTool):
@@ -414,7 +467,8 @@ def process_subtopic(state: DraftWritingState) -> DraftWritingState:
         "cleaned_draft": None,
         "status": "pending",
         "subtopic_index": state["current_subtopic_index"],
-        "topic_index": state["current_topic_index"]
+        "topic_index": state["current_topic_index"],
+        "directory": state["directory"]
     }
     
     # Execute subgraph
@@ -503,9 +557,14 @@ def generate_draft(state: DraftSubtaskState) -> DraftSubtaskState:
     """Generate draft for a subtopic using the DraftGeneratorTool"""
     try:
         generator = DraftGeneratorTool()
+        
+        # Get directory from the parent state or use a default path
+        directory = state.get("directory", None)
+        
         draft = generator.invoke({
             "topic": state["topic"],
-            "subtopic": state["subtopic"]
+            "subtopic": state["subtopic"],
+            "directory": directory
         })
         return {**state, "draft": draft, "status": "draft_generated"}
     except Exception as e:
@@ -552,17 +611,12 @@ def generate_filename(state: DraftSubtaskState) -> DraftSubtaskState:
 def generate_drafts_from_topics(
     directory: str,
     perspectives: List[str] = ["technical_depth"],
-    json_per_perspective: int = 3,
-    output_dir: Optional[str] = None
+    json_per_perspective: int = 3
 ) -> Dict:
     """Generate drafts from topics extracted from PDFs"""
     # Create the graph
     draft_writer = create_draft_writer()
-    
-    # Use output_dir if provided, otherwise use input directory
-    final_output_dir = output_dir if output_dir else os.path.join(directory, "generated_drafts")
-    os.makedirs(final_output_dir, exist_ok=True)
-    
+        
     # Prepare initial state
     initial_state = {
         "directory": directory,
@@ -582,5 +636,5 @@ def generate_drafts_from_topics(
     return {
         "drafts": final_state.get("drafts", []),
         "status": final_state.get("status", "unknown"),
-        "output_directory": final_state.get("output_directory", final_output_dir)
-    } 
+        "output_directory": directory
+    }
