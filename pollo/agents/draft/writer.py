@@ -522,6 +522,10 @@ def process_subtopic(state: DraftWritingState) -> DraftWritingState:
 # Helper functions
 def has_more_subtopics(state: DraftWritingState) -> bool:
     """Check if more subtopics need processing"""
+    # Check if the current topic index is valid before accessing
+    if state["current_topic_index"] >= len(state["topics"]):
+        return False
+        
     current_topic: Topic = state["topics"][state["current_topic_index"]]
     has_more_subtopics = (state["current_subtopic_index"] + 1) < len(current_topic.sub_topics)
     has_more_topics = (state["current_topic_index"] + 1) < len(state["topics"])
@@ -734,6 +738,9 @@ def finalize_batch(state: DraftWritingState) -> DraftWritingState:
         if subtopic_index >= len(topic.sub_topics):
             topic_index += 1
             subtopic_index = 0
+    
+    # Ensure indices stay within bounds
+    topic_index = min(topic_index, len(state["topics"]))
     
     # Create new state with updated indices and drafts
     new_state = {
