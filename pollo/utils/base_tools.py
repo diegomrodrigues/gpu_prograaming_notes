@@ -1,5 +1,6 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Type
 from pathlib import Path
+from pydantic import BaseModel
 import yaml
 from langchain_core.tools import BaseTool
 from langchain_core.runnables.base import Runnable
@@ -17,6 +18,8 @@ class GeminiBaseTool(BaseTool):
     user_template: Optional[str] = None
     prompt_file: Optional[Path] = None
     chain: Optional[Runnable] = None
+    response_mime_type: Optional[str] = None
+    response_schema: Optional[Type[BaseModel]] = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -28,7 +31,9 @@ class GeminiBaseTool(BaseTool):
         self.gemini = GeminiChatModel(
             model_name=self.model_name,
             temperature=self.temperature,
-            mock_response=self.mock_response
+            mock_response=self.mock_response,
+            response_mime_type=self.response_mime_type,
+            response_schema=self.response_schema
         )
         
         # Build the chain if needed

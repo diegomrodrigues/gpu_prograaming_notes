@@ -1,6 +1,7 @@
-from typing import Annotated, Dict, List, Literal, Optional, Tuple, TypedDict, Any
+from typing import Annotated, Dict, List, Literal, Optional, Tuple, Type, TypedDict, Any
 import json
 from pathlib import Path
+import os
 
 from langchain_core.tools import BaseTool, tool
 from langgraph.graph import StateGraph, START, END
@@ -46,36 +47,14 @@ class PDFReaderTool(BaseTool):
             pdf_files.append(str(file))
         return pdf_files
 
-TOPICS_GENERATOR_MOCK = """
-{
-  "topics": [
-    {
-      "topic": "Introduction to Machine Learning",
-      "sub_topics": [
-        "Machine Learning fundamentals encompass the core principles and theoretical foundations that underpin the field. These include the concept of learning from data, the distinction between supervised and unsupervised learning, and the fundamental trade-offs between model complexity and generalization ability. The mathematical frameworks of statistical learning theory provide the theoretical basis for understanding how algorithms can extract patterns from data and make predictions on unseen examples.",
-        "Supervised learning algorithms are designed to learn patterns from labeled training data, enabling them to make predictions on new, unseen data. This paradigm includes classification algorithms that assign discrete categories to inputs and regression methods that predict continuous values. Key techniques include linear and logistic regression, decision trees, support vector machines, and neural networks, each with distinct mathematical foundations and appropriate use cases depending on data characteristics and problem requirements.",
-        "Unsupervised learning approaches extract patterns and structures from unlabeled data without explicit guidance. Clustering algorithms like K-means and hierarchical clustering group similar data points together, while dimensionality reduction techniques such as Principal Component Analysis (PCA) and t-SNE transform high-dimensional data into lower-dimensional representations while preserving important relationships. These methods are essential for exploratory data analysis, feature extraction, and discovering hidden patterns in complex datasets."
-      ]
-    },
-    {
-      "topic": "Neural Networks Architecture",
-      "sub_topics": [
-        "Feedforward neural networks form the foundational architecture in deep learning, consisting of input, hidden, and output layers with neurons connected in a directed acyclic graph. Each neuron applies a non-linear activation function to the weighted sum of its inputs, enabling the network to learn complex, non-linear relationships in data. The universal approximation theorem establishes that even a single hidden layer network with sufficient neurons can approximate any continuous function, though deeper architectures often learn more efficiently for complex tasks.",
-        "Convolutional Neural Networks (CNNs) are specialized architectures designed primarily for processing grid-like data such as images. Their distinctive components include convolutional layers that apply learnable filters across the input, pooling layers that reduce spatial dimensions while retaining important features, and fully connected layers for final predictions. The hierarchical feature extraction capability of CNNs—from low-level edges and textures to high-level semantic concepts—makes them exceptionally effective for computer vision tasks including image classification, object detection, and segmentation.",
-        "Recurrent Neural Networks (RNNs) and their variants are designed to process sequential data by maintaining an internal state that captures information from previous inputs. Long Short-Term Memory (LSTM) and Gated Recurrent Unit (GRU) architectures address the vanishing gradient problem in traditional RNNs through gating mechanisms that control information flow. These architectures excel in tasks requiring temporal context understanding, such as natural language processing, time series analysis, and speech recognition, where dependencies between elements in the sequence are crucial for accurate predictions."
-      ]
-    }
-  ]
-}
-"""
-
 # Modified TopicsGeneratorTool using the base class
 class TopicsGeneratorTool(GeminiBaseTool):
     name: str = "topics_generator"
     description: str = "Generates topics and subtopics based on PDFs and a perspective"
-    mock_response: str = TOPICS_GENERATOR_MOCK
     system_instruction: str = "Generate topics and subtopics based on the provided perspective."
     user_template: str = "Perspective of analysis: {perspective}"
+    response_mime_type: str = "application/json"
+    response_schema: Type[BaseModel] = TopicsOutput
     
     def __init__(self):
         prompt_file = Path(__file__).parent / "create_topics.yaml"
@@ -117,37 +96,15 @@ class TopicsGeneratorTool(GeminiBaseTool):
             "files": uploaded_files
         })
 
-SUBTOPICS_CONSOLIDATOR_MOCK = """```json
-{
-  "topics": [
-    {
-      "topic": "Machine Learning Fundamentals",
-      "sub_topics": [
-        "Machine Learning paradigms encompass supervised, unsupervised, and reinforcement learning approaches, each with distinct methodologies and applications. Supervised learning uses labeled data to train models that can predict outcomes for new inputs, while unsupervised learning discovers patterns and structures in unlabeled data. Reinforcement learning enables agents to learn optimal behaviors through interaction with an environment and feedback in the form of rewards or penalties. These fundamental approaches form the backbone of modern AI systems across diverse domains.",
-        "Statistical learning theory provides the mathematical foundation for machine learning, establishing principles that govern how algorithms generalize from training data to unseen examples. Key concepts include the bias-variance tradeoff, which balances model complexity against overfitting risk; empirical risk minimization, which guides the optimization of model parameters; and regularization techniques that constrain models to improve generalization. These theoretical frameworks enable practitioners to design algorithms with provable guarantees and understand their limitations under different data conditions.",
-        "Feature engineering and selection techniques transform raw data into meaningful representations that enhance model performance. This process involves creating new features through mathematical transformations, domain knowledge application, or automated methods; selecting relevant features using filter, wrapper, or embedded methods; and reducing dimensionality to mitigate the curse of dimensionality. Effective feature engineering often requires both technical expertise and domain understanding, making it a crucial step that significantly impacts model accuracy, interpretability, and computational efficiency."
-      ]
-    },
-    {
-      "topic": "Deep Learning Architectures",
-      "sub_topics": [
-        "Neural network architectures have evolved from simple perceptrons to complex, specialized structures optimized for specific data types and tasks. Feedforward networks process information in one direction from input to output, while recurrent architectures incorporate feedback connections to maintain memory of previous inputs. Convolutional networks leverage spatial hierarchies through local connectivity patterns, and transformer models use attention mechanisms to process sequences in parallel. Each architecture class offers distinct advantages for different problem domains, from computer vision and natural language processing to reinforcement learning and generative modeling.",
-        "Attention mechanisms and transformers have revolutionized sequence modeling by enabling models to focus selectively on relevant parts of the input. Unlike recurrent architectures that process sequences step-by-step, transformers use self-attention to compute representations of all positions simultaneously, capturing long-range dependencies more effectively. This parallel computation enables efficient training on massive datasets, while multi-head attention allows the model to attend to information from different representation subspaces. These innovations have led to state-of-the-art performance in natural language processing, computer vision, and multimodal learning tasks.",
-        "Training methodologies for deep neural networks encompass specialized optimization algorithms, regularization techniques, and initialization strategies that address the challenges of high-dimensional, non-convex optimization. Adaptive learning rate methods like Adam and RMSprop automatically adjust parameter updates based on gradient history, while techniques such as batch normalization and layer normalization stabilize training by controlling the distribution of activations. Dropout prevents co-adaptation of neurons, and residual connections enable training of very deep networks by providing gradient shortcuts. These approaches collectively enable the successful training of increasingly complex architectures on diverse datasets."
-      ]
-    }
-  ]
-}
-```"""
-
 # Modified SubtopicsConsolidatorTool using the base class
 class SubtopicsConsolidatorTool(GeminiBaseTool):
     name: str = "subtopics_consolidator"
     description: str = "Consolidates similar subtopics from multiple topic sets"
-    mock_response: str = SUBTOPICS_CONSOLIDATOR_MOCK
     system_instruction: str = "Consolidate similar subtopics from the provided topics."
     user_template: str = "Consolidate the sub-topics in this JSON: {content}"
-    
+    response_mime_type: str = "application/json"
+    response_schema: Type[BaseModel] = TopicsOutput
+
     def __init__(self):
         prompt_file = Path(__file__).parent / "consolidate_subtopics.yaml"
         super().__init__(prompt_file=prompt_file)
@@ -168,6 +125,46 @@ class SubtopicsConsolidatorTool(GeminiBaseTool):
         """Consolidate similar subtopics."""
         # Invoke the chain
         return self.chain.invoke(topics)
+
+# Function to load topics from JSON file
+def load_topics_from_json(directory: str) -> Optional[TopicsOutput]:
+    """Load topics from topics.json if it exists in the directory."""
+    json_path = Path(directory) / "topics.json"
+    if json_path.exists():
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                topics_data = json.load(f)
+            
+            # Convert plain dictionary to Pydantic model
+            topics_list = []
+            for topic_data in topics_data.get("topics", []):
+                topics_list.append(Topic(
+                    topic=topic_data.get("topic", ""),
+                    sub_topics=topic_data.get("sub_topics", [])
+                ))
+            
+            return TopicsOutput(topics=topics_list)
+        except Exception as e:
+            print(f"Error loading topics from JSON: {str(e)}")
+            return None
+    return None
+
+# Function to save topics to JSON file
+def save_topics_to_json(topics: TopicsOutput, directory: str) -> bool:
+    """Save topics to topics.json in the specified directory."""
+    json_path = Path(directory) / "topics.json"
+    try:        
+        # Convert Pydantic model to dictionary
+        topics_dict = topics.dict()
+        
+        # Save to JSON file
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(topics_dict, f, indent=2)
+        
+        return True
+    except Exception as e:
+        print(f"Error saving topics to JSON: {str(e)}")
+        return False
 
 # Graph nodes
 def initialize(state: TopicsState) -> TopicsState:
@@ -273,6 +270,9 @@ def consolidate_subtopics(state: TopicsState) -> TopicsState:
     consolidator = SubtopicsConsolidatorTool()
     consolidated = consolidator.invoke({"topics": state["merged_topics"]})
     
+    # Save consolidated topics to JSON file
+    save_topics_to_json(consolidated, state["directory"])
+    
     return {
         **state,
         "consolidated_topics": consolidated,
@@ -323,6 +323,13 @@ def generate_topics_from_pdfs(
     json_per_perspective: int = 3
 ) -> Dict:
     """Generate topics from PDFs based on multiple perspectives."""
+    # Check if topics.json already exists in the directory
+    existing_topics = load_topics_from_json(directory)
+    if existing_topics:
+        print(f"Loading topics from existing topics.json in {directory}")
+        return existing_topics
+    
+    print(f"Generating new topics from PDFs in {directory}")
     # Create the graph
     topic_generator = create_topic_generator()
     
@@ -343,4 +350,4 @@ def generate_topics_from_pdfs(
     final_state = topic_generator.invoke(initial_state)
     
     # Return the consolidated topics
-    return final_state.get("consolidated_topics", {"topics": []})
+    return final_state.get("consolidated_topics")

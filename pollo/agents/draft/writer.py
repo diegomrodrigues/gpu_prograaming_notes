@@ -9,8 +9,10 @@ import yaml
 from pathlib import Path
 import os
 import operator
+import re
 
-from pollo.agents.topics.generator import Topic
+from pollo.agents.topics.generator import Topic, TopicsOutput
+from pollo.agents.topics.generator import generate_topics_from_pdfs, load_topics_from_json
 from pollo.utils.gemini import GeminiChatModel
 from pollo.utils.base_tools import GeminiBaseTool
 
@@ -38,157 +40,8 @@ class DraftWritingState(TypedDict, total=False):
     current_batch: List[Dict]  # Batch of subtopics to process in parallel
     branching_factor: int      # Number of subtopics to process in parallel
     branch_results: Annotated[Dict[str, Dict], operator.or_]  # Use operator.or_ as reducer for concurrent updates
+    uploaded_pdf_files: Dict[str, List[Dict]]  # Store uploaded PDF files per API key to reuse across all draft generations
 
-# Define mock responses for testing
-DRAFT_GENERATOR_MOCK = """
-# Aprendizado Supervisionado: Fundamentos e Aplicações
-
-### Introdução
-
-O aprendizado supervisionado representa um dos paradigmas fundamentais no campo da aprendizagem de máquina, caracterizado pela utilização de dados rotulados para o desenvolvimento de modelos preditivos [^1]. Esta abordagem metodológica possibilita aos algoritmos estabelecer mapeamentos entre características de entrada e saídas desejadas, viabilizando previsões sobre dados não vistos anteriormente [^2]. Conforme indicado no contexto, os modelos supervisionados formam a base para diversas aplicações em análise preditiva e classificação automática.
-
-Tenha cuidado para não se desviar do tema principal, mantendo o foco nas metodologias supervisionadas conforme especificado.
-
-### Conceitos Fundamentais
-
-O aprendizado supervisionado opera sobre uma premissa essencial: aprender a partir de exemplos onde as respostas corretas são fornecidas [^3]. O algoritmo analisa dados de treinamento compostos por pares de entrada-saída, identificando padrões que relacionam as entradas às suas respectivas saídas. Este processo estruturado de aprendizagem envolve:
-
-1. **Fase de Treinamento**: O algoritmo processa exemplos rotulados, ajustando parâmetros internos para minimizar erros de predição [^4].
-2. **Fase de Validação**: O desempenho do modelo é avaliado em dados reservados para garantir capacidade de generalização.
-3. **Fase de Teste**: A avaliação final ocorre em dados completamente novos para medir o desempenho no mundo real.
-
-A representação matemática do problema de aprendizado supervisionado pode ser expressa como:
-
-$$f: X \rightarrow Y$$
-
-Onde $f$ representa a função que mapeamos da entrada $X$ para a saída $Y$ [^5].
-
-Baseie seu capítulo exclusivamente nas informações fornecidas no contexto e nos tópicos anteriores quando disponíveis.
-
-### Algoritmos Principais
-
-O panorama do aprendizado supervisionado engloba diversos algoritmos, cada um com fundamentos matemáticos distintos e domínios específicos de aplicabilidade:
-
-#### Métodos Lineares
-- **Regressão Linear**: Modela relações entre variáveis usando equações lineares, sendo ótimo para variáveis-alvo contínuas [^6].
-- **Regressão Logística**: Um algoritmo de classificação que modela probabilidades utilizando a função logística, particularmente eficaz para resultados binários [^7].
-
-A função logística pode ser representada como:
-
-$$P(y=1|x) = \frac{1}{1 + e^{-(\beta_0 + \beta_1 x_1 + ... + \beta_n x_n)}}$$
-
-#### Métodos Baseados em Árvores
-- **Árvores de Decisão**: Estruturas hierárquicas que particionam dados com base em valores de características, criando regras de decisão interpretáveis [^8].
-- **Random Forests**: Métodos ensemble que combinam múltiplas árvores de decisão para melhorar a precisão e reduzir overfitting [^9].
-- **Gradient Boosting Machines**: Técnicas ensemble sequenciais que constroem árvores para corrigir erros das anteriores [^10].
-
-### Support Vector Machines
-Estes algoritmos identificam hiperplanos ótimos que maximizam a margem entre classes, lidando com problemas lineares e não-lineares através de funções kernel [^11].
-
-O problema de otimização para SVMs pode ser expresso como:
-
-$$\\min_{w,b} \\frac{1}{2}||w||^2$$
-$$\\text{sujeito a } y_i(w^Tx_i + b) \\geq 1, \\forall i$$
-
-Organize o conteúdo logicamente com introdução, desenvolvimento e conclusão.
-
-### Considerações Práticas
-
-A implementação do aprendizado supervisionado requer atenção cuidadosa a:
-
-- **Engenharia de Características**: Transformar dados brutos em representações significativas que melhorem o desempenho do modelo [^12].
-- **Compromisso Viés-Variância**: Equilibrar a complexidade do modelo para evitar tanto underfitting quanto overfitting [^13].
-- **Métricas de Avaliação**: Selecionar métricas apropriadas (acurácia, precisão, recall, F1-score, RMSE) com base no contexto do problema [^14].
-- **Validação Cruzada**: Usar técnicas como validação cruzada k-fold para obter estimativas confiáveis de desempenho [^15].
-
-Ao compreender os princípios matemáticos, opções algorítmicas e considerações de implementação do aprendizado supervisionado, os praticantes podem aplicar efetivamente essas técnicas para extrair insights valiosos e previsões a partir de dados.
-
-### Referências
-[^1]: Definição fundamental de aprendizado supervisionado.
-[^2]: Capacidade de generalização em modelos supervisionados.
-[^3]: Princípio básico do aprendizado a partir de exemplos rotulados.
-[^4]: Processo de ajuste de parâmetros durante o treinamento.
-[^5]: Formalização matemática do problema de aprendizado.
-[^6]: Características e aplicações da regressão linear.
-[^7]: Função e aplicabilidade da regressão logística.
-
-Use $ para expressões matemáticas em linha e $$ para equações centralizadas.
-
-Lembre-se de usar $ em vez de \$ para delimitar expressões matemáticas.
-
-<!-- END -->
-"""
-
-DRAFT_CLEANUP_MOCK = """
-# Aprendizado Supervisionado: Fundamentos e Aplicações
-
-### Introdução
-
-O aprendizado supervisionado representa um dos paradigmas fundamentais no campo da aprendizagem de máquina, caracterizado pela utilização de dados rotulados para o desenvolvimento de modelos preditivos [^1]. Esta abordagem metodológica possibilita aos algoritmos estabelecer mapeamentos entre características de entrada e saídas desejadas, viabilizando previsões sobre dados não vistos anteriormente [^2]. Os modelos supervisionados formam a base para diversas aplicações em análise preditiva e classificação automática.
-
-### Conceitos Fundamentais
-
-O aprendizado supervisionado opera sobre uma premissa essencial: aprender a partir de exemplos onde as respostas corretas são fornecidas [^3]. O algoritmo analisa dados de treinamento compostos por pares de entrada-saída, identificando padrões que relacionam as entradas às suas respectivas saídas. Este processo estruturado de aprendizagem envolve:
-
-1. **Fase de Treinamento**: O algoritmo processa exemplos rotulados, ajustando parâmetros internos para minimizar erros de predição [^4].
-2. **Fase de Validação**: O desempenho do modelo é avaliado em dados reservados para garantir capacidade de generalização.
-3. **Fase de Teste**: A avaliação final ocorre em dados completamente novos para medir o desempenho no mundo real.
-
-A representação matemática do problema de aprendizado supervisionado pode ser expressa como:
-
-$$f: X \rightarrow Y$$
-
-Onde $f$ representa a função que mapeamos da entrada $X$ para a saída $Y$ [^5].
-
-### Algoritmos Principais
-
-O panorama do aprendizado supervisionado engloba diversos algoritmos, cada um com fundamentos matemáticos distintos e domínios específicos de aplicabilidade:
-
-#### Métodos Lineares
-- **Regressão Linear**: Modela relações entre variáveis usando equações lineares, sendo ótimo para variáveis-alvo contínuas [^6].
-- **Regressão Logística**: Um algoritmo de classificação que modela probabilidades utilizando a função logística, particularmente eficaz para resultados binários [^7].
-
-A função logística pode ser representada como:
-
-$$P(y=1|x) = \frac{1}{1 + e^{-(\beta_0 + \beta_1 x_1 + ... + \beta_n x_n)}}$$
-
-#### Métodos Baseados em Árvores
-- **Árvores de Decisão**: Estruturas hierárquicas que particionam dados com base em valores de características, criando regras de decisão interpretáveis [^8].
-- **Random Forests**: Métodos ensemble que combinam múltiplas árvores de decisão para melhorar a precisão e reduzir overfitting [^9].
-- **Gradient Boosting Machines**: Técnicas ensemble sequenciais que constroem árvores para corrigir erros das anteriores [^10].
-
-Estes métodos apresentam diferentes compromissos entre viés e variância.
-
-#### Support Vector Machines
-Estes algoritmos identificam hiperplanos ótimos que maximizam a margem entre classes, lidando com problemas lineares e não-lineares através de funções kernel [^11].
-
-O problema de otimização para SVMs pode ser expresso como:
-
-$$\\min_{w,b} \\frac{1}{2}||w||^2$$
-$$\\text{sujeito a } y_i(w^Tx_i + b) \\geq 1, \\forall i$$
-
-### Considerações Práticas
-
-A implementação do aprendizado supervisionado requer atenção cuidadosa a:
-
-- **Engenharia de Características**: Transformar dados brutos em representações significativas que melhorem o desempenho do modelo [^12].
-- **Compromisso Viés-Variância**: Equilibrar a complexidade do modelo para evitar tanto underfitting quanto overfitting [^13].
-- **Métricas de Avaliação**: Selecionar métricas apropriadas (acurácia, precisão, recall, F1-score, RMSE) com base no contexto do problema [^14].
-- **Validação Cruzada**: Usar técnicas como validação cruzada k-fold para obter estimativas confiáveis de desempenho [^15].
-
-Ao compreender os princípios matemáticos, opções algorítmicas e considerações de implementação do aprendizado supervisionado, os praticantes podem aplicar efetivamente essas técnicas para extrair insights valiosos e previsões a partir de dados.
-
-### Referências
-[^1]: Definição fundamental de aprendizado supervisionado.
-[^2]: Capacidade de generalização em modelos supervisionados.
-[^3]: Princípio básico do aprendizado a partir de exemplos rotulados.
-[^4]: Processo de ajuste de parâmetros durante o treinamento.
-[^5]: Formalização matemática do problema de aprendizado.
-[^6]: Características e aplicações da regressão linear.
-[^7]: Função e aplicabilidade da regressão logística.
-
-<!-- END -->
-"""
 
 # Update tool classes to inherit from GeminiBaseTool
 class FilenameGeneratorTool(GeminiBaseTool):
@@ -196,58 +49,123 @@ class FilenameGeneratorTool(GeminiBaseTool):
     description: str = "Generates an appropriate filename for a subtopic"
     model_name: str = "gemini-2.0-flash"
     temperature: float = 0.2
-    prompt_file: Optional[str] = "generate_filename.yaml"
+    mock_response: Optional[str] = None
+    
+    def __init__(self):
+        prompt_file = Path(__file__).parent / "generate_filename.yaml"
+        super().__init__(prompt_file=prompt_file)
     
     def _build_chain(self):
         """Build the LCEL chain for filename generation."""
-        from langchain_core.runnables import RunnableLambda
-        
-        def format_input(inputs):
-            return {
-                "topic": inputs["topic"],
-                "subtopic": inputs["subtopic"]
-            }
-        
-        self.chain = (
-            RunnableLambda(format_input)
-            | self.generate_filename_prompt
-            | self.gemini
-        )
+        def process_input(inputs):
+            messages = self.create_messages(**inputs)
+            return self.gemini.invoke(messages)
+            
+        self.chain = RunnableLambda(process_input)
+    
+    def _run(self, topic: str, subtopic: str) -> str:
+        """Generate a filename based on topic and subtopic."""
+        return self.chain.invoke({
+            "topic": topic,
+            "subtopic": subtopic
+        })
 
 class DraftGeneratorTool(GeminiBaseTool):
     name: str = "draft_generator"
     description: str = "Generates an initial draft for a subtopic"
     model_name: str = "gemini-2.0-flash"
     temperature: float = 0.7
-    prompt_file: Optional[str] = "generate_draft.yaml"
+    
+    def __init__(self):
+        prompt_file = Path(__file__).parent / "generate_draft.yaml"
+        super().__init__(prompt_file=prompt_file)
     
     def _build_chain(self):
         """Build the LCEL chain for draft generation."""
-        from langchain_core.runnables import RunnableLambda
-        
         def process_with_files(inputs):
+            messages = self.create_messages(**inputs["model_inputs"])
             return self.gemini.invoke(
-                inputs["model_inputs"], 
+                messages, 
                 files=inputs.get("files", [])
             )
             
-        self.chain = (
-            RunnableLambda(lambda inputs: {
-                "model_inputs": self.generate_draft_prompt.invoke({
-                    "topic": inputs["topic"],
-                    "subtopic": inputs["subtopic"]
-                }),
-                "files": inputs.get("files", [])
-            })
-            | RunnableLambda(process_with_files)
-        )
+        self.chain = RunnableLambda(lambda inputs: {
+            "model_inputs": {
+                "topic": inputs["topic"],
+                "subtopic": inputs["subtopic"]
+            },
+            "files": inputs.get("files", [])
+        }) | RunnableLambda(process_with_files)
+    
+    def _run(self, topic: str, subtopic: str, directory: Optional[str] = None, uploaded_files: Optional[Dict[str, List]] = None) -> str:
+        """Generate a draft based on topic and subtopic."""
+        # Prepare inputs for the chain
+        inputs = {
+            "topic": topic,
+            "subtopic": subtopic
+        }
+        
+        files = []
+        
+        # Use pre-uploaded files if provided
+        if uploaded_files:
+            # Get current API key to use appropriate uploaded files
+            current_api_key = self.gemini._get_current_api_key() if hasattr(self.gemini, '_get_current_api_key') else None
+            
+            if current_api_key and current_api_key in uploaded_files:
+                # Use files uploaded with the current API key
+                files = uploaded_files[current_api_key]
+            elif len(uploaded_files) > 0:
+                # If current key not found but we have uploads for other keys,
+                # get first available set of uploads
+                first_key = list(uploaded_files.keys())[0]
+                files = uploaded_files[first_key]
+        
+        # If no pre-uploaded files are found and directory is available, upload them
+        if not files and directory:
+            pdf_reader = PDFReaderTool()
+            pdf_files = pdf_reader.invoke({"directory": directory})
+            if pdf_files:
+                files = self.upload_files(pdf_files)
+        
+        return self.chain.invoke({
+            **inputs,
+            "files": files
+        })
 
 class DraftCleanupTool(GeminiBaseTool):
     name: str = "draft_cleanup"
     description: str = "Cleans and improves a generated draft"
     model_name: str = "gemini-2.0-flash"
     temperature: float = 0.2
-    prompt_file: Optional[str] = "cleanup_draft.yaml"
+    
+    def __init__(self):
+        prompt_file = Path(__file__).parent / "cleanup_draft.yaml"
+        super().__init__(prompt_file=prompt_file)
+    
+    def _build_chain(self):
+        """Build the LCEL chain for draft cleanup."""
+        def process_input(inputs):
+            messages = self.create_messages(**inputs)
+            return self.gemini.invoke(messages)
+            
+        self.chain = RunnableLambda(process_input)
+    
+    def _run(self, draft: str) -> str:
+        """Clean and improve a draft."""
+        return self.chain.invoke({"draft": draft})
+
+# Add PDFReaderTool to read files (used by DraftGeneratorTool)
+class PDFReaderTool(BaseTool):
+    name: str = "pdf_reader"
+    description: str = "Reads PDF files from a specified directory"
+    
+    def _run(self, directory: str) -> List[str]:
+        """Read PDF files from a directory."""
+        pdf_files = []
+        for file in Path(directory).glob("*.pdf"):
+            pdf_files.append(str(file))
+        return pdf_files
 
 # Subgraph for individual draft generation + cleanup
 def create_draft_subgraph() -> StateGraph:
@@ -324,15 +242,21 @@ def create_draft_writer(branching_factor: int = 3) -> StateGraph:
 # Node implementations
 def generate_topics(state: DraftWritingState) -> DraftWritingState:
     """Generate topics structure using existing topic generator"""
-    from pollo.agents.topics.generator import create_topic_generator
-
-    topic_generator = create_topic_generator()
-    topics = topic_generator.invoke({
-        "directory": state["directory"],
-        "perspectives": state.get("perspectives", ["technical_depth"]),
-        "json_per_perspective": state.get("json_per_perspective", 3)
-    })
-    return {**state, "topics": topics["consolidated_topics"].topics}
+    # Check if topics.json already exists in the directory
+    existing_topics = load_topics_from_json(state["directory"])
+    if existing_topics:
+        print(f"Loading topics from existing topics.json in {state['directory']}")
+        return {**state, "topics": existing_topics.topics}
+    
+    # If topics.json doesn't exist, generate topics using the topic generator
+    print(f"Generating new topics from PDFs in {state['directory']}")
+    topics_output: TopicsOutput = generate_topics_from_pdfs(
+        directory=state["directory"],
+        perspectives=state.get("perspectives", ["technical_depth"]),
+        json_per_perspective=state.get("json_per_perspective", 3)
+    )
+    
+    return {**state, "topics": topics_output.topics}
 
 def initialize_processing(state: DraftWritingState) -> DraftWritingState:
     """Initialize processing state"""
@@ -389,7 +313,7 @@ def has_more_subtopics(state: DraftWritingState) -> bool:
     if state["current_topic_index"] >= len(state["topics"]):
         return False
         
-    current_topic: Topic = state["topics"][state["current_topic_index"]]
+    current_topic = state["topics"][state["current_topic_index"]]
     has_more_subtopics = (state["current_subtopic_index"] + 1) < len(current_topic.sub_topics)
     has_more_topics = (state["current_topic_index"] + 1) < len(state["topics"])
     
@@ -413,11 +337,11 @@ def advance_indices(state: DraftWritingState) -> DraftWritingState:
     return state
 
 def finalize_output(state: DraftWritingState) -> DraftWritingState:
-    """Finalize output structure and write files to disk"""
+    """Finalize output structure - files are already written to disk"""
     # Filter completed drafts
     completed_drafts = [d for d in state["drafts"] if d["status"] == "filename_generated"]
     
-    # Group drafts by topic
+    # Group drafts by topic for reporting
     drafts_by_topic = {}
     for draft in completed_drafts:
         topic_index = draft.get("topic_index", 0)
@@ -426,20 +350,12 @@ def finalize_output(state: DraftWritingState) -> DraftWritingState:
             drafts_by_topic[topic_index] = {"topic": topic, "drafts": []}
         drafts_by_topic[topic_index]["drafts"].append(draft)
     
-    # Create directories and write files
+    # Report summary
     output_dir = state["directory"]
+    print(f"\nGeneration completed: {len(completed_drafts)} files saved to {output_dir}")
     for topic_index, topic_data in sorted(drafts_by_topic.items()):
-        # Create numbered topic directory
         topic_dir_name = f"{topic_index+1:02d}. {topic_data['topic']}"
-        topic_path = os.path.join(output_dir, topic_dir_name)
-        os.makedirs(topic_path, exist_ok=True)
-        
-        # Write each draft to a file
-        for draft in sorted(topic_data["drafts"], key=lambda x: x.get("subtopic_index", 0)):
-            if draft.get("cleaned_draft") and draft.get("filename"):
-                file_path = os.path.join(topic_path, draft["filename"])
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(draft["cleaned_draft"])
+        print(f"- {topic_dir_name}: {len(topic_data['drafts'])} files")
     
     return {
         **state,
@@ -457,10 +373,14 @@ def generate_draft(state: DraftSubtaskState) -> DraftSubtaskState:
         # Get directory from the parent state or use a default path
         directory = state.get("directory", None)
         
+        # Use pre-uploaded files if available in the state
+        pre_uploaded_files = state.get("uploaded_pdf_files", None)
+        
         draft = generator.invoke({
             "topic": state["topic"],
             "subtopic": state["subtopic"],
-            "directory": directory
+            "directory": directory,
+            "uploaded_files": pre_uploaded_files  # Pass the pre-uploaded files
         })
         return {**state, "draft": draft, "status": "draft_generated"}
     except Exception as e:
@@ -482,14 +402,22 @@ def handle_draft_error(state: DraftSubtaskState) -> DraftSubtaskState:
     return {**state, "status": "error"}
 
 def generate_filename(state: DraftSubtaskState) -> DraftSubtaskState:
-    """Generate a filename for the draft"""
+    """Generate a filename for the draft and save the file"""
     try:
         generator = FilenameGeneratorTool()
-        base_filename = generator.invoke({
+        response = generator.invoke({
             "topic": state["topic"],
             "subtopic": state["subtopic"]
         })
         
+        # Extract clean filename from potentially complex response
+        if isinstance(response, str):
+            # Simple string response
+            base_filename = response
+        elif hasattr(response, 'content') and isinstance(response.content, str):
+            # Handle object with content attribute
+            base_filename = response.content.strip()
+                
         # Format filename with numbering prefix based on subtopic index
         subtopic_index = state.get("subtopic_index", 0)
         formatted_filename = f"{subtopic_index+1:02d}. {base_filename}"
@@ -497,10 +425,27 @@ def generate_filename(state: DraftSubtaskState) -> DraftSubtaskState:
         # Ensure it has .md extension if not already present
         if not formatted_filename.lower().endswith('.md'):
             formatted_filename += '.md'
+        
+        print(f"Generated filename: {formatted_filename}")
+        
+        # Save the file immediately
+        if state.get("directory") and state.get("cleaned_draft") and state.get("topic_index") is not None:
+            # Create topic directory structure
+            topic_index = state.get("topic_index", 0)
+            topic_dir_name = f"{topic_index+1:02d}. {state['topic']}"
+            topic_path = os.path.join(state["directory"], topic_dir_name)
+            os.makedirs(topic_path, exist_ok=True)
+            
+            # Write file
+            file_path = os.path.join(topic_path, formatted_filename)
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(state["cleaned_draft"].content)
+            print(f"File saved: {file_path}")
             
         return {**state, "filename": formatted_filename, "status": "filename_generated"}
     except Exception as e:
         print(f"Error generating filename: {str(e)}")
+        print(f"Response from generator: {str(response) if 'response' in locals() else 'No response'}")
         return {**state, "status": "error"}
 
 # New function definitions for parallel processing
@@ -552,7 +497,8 @@ def process_subtopic_parallel(state: DraftWritingState, branch_id: int = 0) -> D
         "status": "pending",
         "subtopic_index": subtopic_index,
         "topic_index": topic_index,
-        "directory": state["directory"]
+        "directory": state["directory"],
+        "uploaded_pdf_files": state.get("uploaded_pdf_files", None)  # Pass the pre-uploaded files
     }
     
     # Execute subgraph
@@ -631,6 +577,41 @@ def generate_drafts_from_topics(
         json_per_perspective: Number of JSON files to generate per perspective
         branching_factor: Number of subtopics to process in parallel
     """
+    # Create a draft generator tool to access API keys and upload_files method
+    tool = DraftGeneratorTool()
+    
+    # Get list of API keys from the tool's gemini client
+    api_keys = tool.gemini._api_keys if hasattr(tool.gemini, '_api_keys') else []
+    
+    # Upload PDF files once per API key at the beginning
+    uploaded_pdf_files = {}
+    pdf_reader = PDFReaderTool()
+    pdf_files = pdf_reader.invoke({"directory": directory})
+    
+    if pdf_files:
+        print(f"Found {len(pdf_files)} PDF files, uploading for each API key...")
+        
+        for i, api_key in enumerate(api_keys):
+            print(f"Uploading PDFs for API key {i+1}/{len(api_keys)}...")
+            
+            # Temporarily set current API key for tool's gemini client
+            original_key_index = tool.gemini._current_key_index
+            tool.gemini._current_key_index = i
+            tool.gemini._initialize_client()
+            
+            try:
+                # Upload files for this specific API key
+                key_uploads = tool.upload_files(pdf_files)
+                uploaded_pdf_files[api_key] = key_uploads
+                print(f"Successfully uploaded {len(key_uploads)} files for API key {i+1}.")
+            except Exception as e:
+                print(f"Error uploading files for API key {i+1}: {str(e)}")
+                uploaded_pdf_files[api_key] = []
+            
+            # Restore original API key
+            tool.gemini._current_key_index = original_key_index
+            tool.gemini._initialize_client()
+    
     # Create the graph with specified branching factor
     draft_writer = create_draft_writer(branching_factor)
         
@@ -644,11 +625,12 @@ def generate_drafts_from_topics(
         "current_topic_index": 0,
         "current_subtopic_index": 0,
         "drafts": [],
-        "status": "starting"
+        "status": "starting",
+        "uploaded_pdf_files": uploaded_pdf_files  # Include the uploaded files in the state
     }
     
     # Run the graph
-    final_state = draft_writer.invoke(initial_state)
+    final_state = draft_writer.invoke(initial_state, {"recursion_limit": 500})
     
     # Return the drafts and output location
     return {

@@ -1,0 +1,35 @@
+{
+  "topics": [
+    {
+      "topic": "MPI Point-to-Point Communication Types",
+      "sub_topics": [
+        "MPI supports two main types of communication: point-to-point and collective, with point-to-point communication involving a source process and a destination process, analogous to a caller dialing a call and a receiver answering a call in a telephone system.",
+        "In point-to-point communication, the source process calls the MPI_Send() function, and the destination process calls the MPI_Recv() function.",
+        "MPI_Send() requires a pointer to the memory area to be sent, the number of data elements, the MPI_Datatype data type, and the rank of the destination process. MPI_Datatype includes MPI_DOUBLE (double-precision floating point), MPI_FLOAT (single-precision floating point), MPI_INT (integer), and MPI_CHAR (character), with sizes depending on the host processor.",
+        "MPI_Recv() requires a pointer to the memory area where the received data should be deposited, the maximum number of elements to receive, and the MPI_Datatype data type. The 'tag' parameter in MPI_Send() and MPI_Recv() allows classifying messages sent by the same process, and MPI_ANY_TAG can be used in MPI_Recv() to accept messages with any tag value from the source process.",
+        "MPI_Sendrecv() is a function that combines MPI_Send() and MPI_Recv(), reducing the number of MPI function calls, allowing data exchange between processes more efficiently. To simplify communication, instead of reading data from a complex file system, the data server process initializes the data with random numbers and distributes them to the computing processes."
+      ]
+    },
+    {
+      "topic": "Overlapping Computation and Communication",
+      "sub_topics": [
+        "Overlapping computation and communication is a technique to improve performance in parallel applications by dividing the computation tasks of each process into two stages.",
+        "In the first stage, each process calculates the boundary slices that will be needed as halo cells by its neighbors in the next iteration.",
+        "In the second stage, each process performs two activities in parallel: communicating its new boundary values to neighboring processes and calculating the remaining data in its partition.",
+        "To support parallel activities, two advanced features of CUDA are used: pinned memory allocation and streams.",
+        "Pinned memory allocation ensures that the allocated memory is not paged by the operating system, allowing faster data transfers between the CPU and GPU, using the API call cudaHostAlloc().",
+        "Streams allow the simultaneous execution of CUDA API functions, such as asynchronous memory copies (cudaMemcpyAsync()) and kernel launches.",
+        "The MPI_Barrier() synchronization is used to ensure that all computing nodes receive their input data and are ready to start the computation steps simultaneously. The `cudaDeviceSynchronize()` function ensures that all operations on the GPU (kernels and memory copies) are completed before proceeding with the execution of the program."
+      ]
+    },
+    {
+      "topic": "MPI Collective Communication",
+      "sub_topics": [
+        "Collective communication in MPI involves a group of MPI processes performing a communication operation together, such as broadcast, reduction, gather, and scatter.",
+        "MPI_Barrier() is a collective communication function used for barrier synchronization, ensuring that all MPI processes are ready before interacting with each other, guaranteeing that no process advances until all processes have reached the barrier.",
+        "Other collective communication functions include broadcast, reduction, gather, and scatter.",
+        "Collective communication functions are highly optimized by runtime developers and MPI system vendors, generally leading to better performance, readability, and productivity."
+      ]
+    }
+  ]
+}
