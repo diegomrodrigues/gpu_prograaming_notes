@@ -12,7 +12,7 @@ import operator
 
 from pollo.agents.topics.generator import Topic
 from pollo.utils.gemini import GeminiChatModel
-from pollo.utils.prompts import load_chat_prompt_from_yaml
+from pollo.utils.base_tools import GeminiBaseTool
 
 # Define state schemas
 class DraftSubtaskState(TypedDict):
@@ -190,197 +190,64 @@ Ao compreender os princípios matemáticos, opções algorítmicas e consideraç
 <!-- END -->
 """
 
-# Create Tool classes for draft generation and cleanup
-class FilenameGeneratorTool(BaseTool):
+# Update tool classes to inherit from GeminiBaseTool
+class FilenameGeneratorTool(GeminiBaseTool):
     name: str = "filename_generator"
     description: str = "Generates an appropriate filename for a subtopic"
-    gemini: Optional[GeminiChatModel] = None
-    generate_filename_prompt: Optional[ChatPromptTemplate] = None
-    chain: Optional[Runnable] = None
-
-    def __init__(self):
-        super().__init__()
-        self.gemini = GeminiChatModel(
-            model_name="gemini-2.0-flash",
-            temperature=0.2,
-            mock_response="Default Filename"
-        )
-        
-        # Create a prompt template similar to the reference implementation
-        self.generate_filename_prompt =  load_chat_prompt_from_yaml(
-            Path(__file__).parent / "generate_filename.yaml",
-            default_system="You are an expert at organizing academic content. Your job is to create appropriate filenames for technical document sections.",
-            default_user="Generate an appropriate filename for a section about: {subtopic}. This section belongs to the chapter on {topic}. Return only the filename with an appropriate extension."
-        )
-        
-        # Create the LCEL chain
-        self._build_chain()
+    model_name: str = "gemini-2.0-flash"
+    temperature: float = 0.2
+    prompt_file: Optional[str] = "generate_filename.yaml"
     
     def _build_chain(self):
         """Build the LCEL chain for filename generation."""
-        # Format input for the chain
+        from langchain_core.runnables import RunnableLambda
+        
         def format_input(inputs):
             return {
                 "topic": inputs["topic"],
                 "subtopic": inputs["subtopic"]
             }
         
-        # Build the chain
         self.chain = (
-            RunnableLambda(format_input) | 
-            self.generate_filename_prompt | 
-            self.gemini
+            RunnableLambda(format_input)
+            | self.generate_filename_prompt
+            | self.gemini
         )
 
-    def _run(self, topic: str, subtopic: str) -> str:
-        """Generate a filename for the given topic/subtopic."""
-        response = self.chain.invoke({
-            "topic": topic,
-            "subtopic": subtopic
-        })
-        return response.content.strip()
-
-class DraftGeneratorTool(BaseTool):
+class DraftGeneratorTool(GeminiBaseTool):
     name: str = "draft_generator"
     description: str = "Generates an initial draft for a subtopic"
-    gemini: Optional[GeminiChatModel] = None
-    generate_draft_prompt: Optional[ChatPromptTemplate] = None
-    chain: Optional[Runnable] = None
-
-    def __init__(self):
-        super().__init__()
-        self.gemini = GeminiChatModel(
-            model_name="gemini-2.0-flash",
-            temperature=0.7,
-            mock_response=DRAFT_GENERATOR_MOCK
-        )
-        
-        self.generate_draft_prompt = load_chat_prompt_from_yaml(
-            Path(__file__).parent / "generate_draft.yaml",
-            default_system="You are an expert academic writer. Generate a detailed, well-structured section draft for a technical document.",
-            default_user="Generate a detailed chapter section about: {subtopic}. The section belongs to the chapter on {topic}."
-        )
-        
-        # Create the LCEL chain
-        self._build_chain()
+    model_name: str = "gemini-2.0-flash"
+    temperature: float = 0.7
+    prompt_file: Optional[str] = "generate_draft.yaml"
     
     def _build_chain(self):
         """Build the LCEL chain for draft generation."""
         from langchain_core.runnables import RunnableLambda
         
-        # Format input for the chain
-        def format_input(inputs):
-            return {
-                "topic": inputs["topic"],
-                "subtopic": inputs["subtopic"]
-            }
-        
-        # Process with files
         def process_with_files(inputs):
-            prompt_args = inputs["prompt_args"]
-            model_inputs = inputs["model_inputs"]
-            files = inputs.get("files", [])
-            
-            # Call the model with files
             return self.gemini.invoke(
-                model_inputs, 
-                files=files
+                inputs["model_inputs"], 
+                files=inputs.get("files", [])
             )
             
-        # Build the chain
         self.chain = (
             RunnableLambda(lambda inputs: {
-                "prompt_args": inputs,
-                "model_inputs": format_input(inputs),
+                "model_inputs": self.generate_draft_prompt.invoke({
+                    "topic": inputs["topic"],
+                    "subtopic": inputs["subtopic"]
+                }),
                 "files": inputs.get("files", [])
-            }) |
-            {
-                "prompt_args": lambda x: x["prompt_args"],
-                "model_inputs": lambda x: self.generate_draft_prompt.invoke(x["model_inputs"]),
-                "files": lambda x: x["files"]
-            } |
-            RunnableLambda(process_with_files)
+            })
+            | RunnableLambda(process_with_files)
         )
 
-    def _run(self, topic: str, subtopic: str, directory: str = None) -> str:
-        """Generate a draft for the given subtopic using PDFs if available."""
-        # If no directory provided, generate without files
-        if not directory:
-            response = self.chain.invoke({
-                "topic": topic,
-                "subtopic": subtopic
-            })
-            return response.content
-        
-        # Read PDF files
-        pdf_files = []
-        for file in Path(directory).glob("*.pdf"):
-            pdf_files.append(str(file))
-        
-        if not pdf_files:
-            # No PDFs found, generate without files
-            response = self.chain.invoke({
-                "topic": topic,
-                "subtopic": subtopic
-            })
-            return response.content
-        
-        # Upload the PDF files
-        uploaded_files = []
-        for pdf_file in pdf_files:
-            uploaded_file = self.gemini.upload_file(pdf_file, mime_type="application/pdf")
-            uploaded_files.append(uploaded_file)
-        
-        # Invoke the chain with files
-        response = self.chain.invoke({
-            "topic": topic,
-            "subtopic": subtopic,
-            "files": uploaded_files
-        })
-        
-        return response.content
-
-class DraftCleanupTool(BaseTool):
+class DraftCleanupTool(GeminiBaseTool):
     name: str = "draft_cleanup"
     description: str = "Cleans and improves a generated draft"
-    gemini: Optional[GeminiChatModel] = None
-    cleanup_draft_prompt: Optional[ChatPromptTemplate] = None
-    chain: Optional[Runnable] = None
-
-    def __init__(self):
-        super().__init__()
-        self.gemini = GeminiChatModel(
-            model_name="gemini-2.0-flash",
-            temperature=0.2,
-            mock_response=DRAFT_CLEANUP_MOCK
-        )
-        
-        self.cleanup_draft_prompt = load_chat_prompt_from_yaml(
-            Path(__file__).parent / "cleanup_draft.yaml",
-            default_system="You are an expert editor. Refine and improve the given draft to ensure it is clear, concise, and well-structured.",
-            default_user="Clean and improve this draft to make it more coherent and professional:\n\n{draft}"
-        )
-        
-        # Create the LCEL chain
-        self._build_chain()
-    
-    def _build_chain(self):
-        """Build the LCEL chain for draft cleanup."""
-        # Format input for the chain
-        def format_input(inputs):
-            return {"draft": inputs["draft"]}
-        
-        # Build the chain
-        self.chain = (
-            RunnableLambda(format_input) | 
-            self.cleanup_draft_prompt | 
-            self.gemini
-        )
-
-    def _run(self, draft: str) -> str:
-        """Clean and improve the given draft."""
-        response = self.chain.invoke({"draft": draft})
-        return response.content
+    model_name: str = "gemini-2.0-flash"
+    temperature: float = 0.2
+    prompt_file: Optional[str] = "cleanup_draft.yaml"
 
 # Subgraph for individual draft generation + cleanup
 def create_draft_subgraph() -> StateGraph:

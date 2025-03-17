@@ -1,22 +1,14 @@
 from typing import Annotated, Dict, List, Literal, Optional, Tuple, TypedDict, Any
-import operator
 import json
-import os
 from pathlib import Path
-import yaml
 
 from langchain_core.tools import BaseTool, tool
-from langchain_core.messages import AnyMessage
 from langgraph.graph import StateGraph, START, END
-from langgraph.graph.message import add_messages
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.runnables.base import Runnable
 from pydantic import BaseModel, Field
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda
 
-from pollo.utils.gemini import GeminiChatModel
-from pollo.utils.prompts import load_chat_prompt_from_yaml
-
+from pollo.utils.base_tools import GeminiBaseTool
 
 # Define state schemas
 class TopicsState(TypedDict):
@@ -77,63 +69,32 @@ TOPICS_GENERATOR_MOCK = """
 }
 """
 
-class TopicsGeneratorTool(BaseTool):
+# Modified TopicsGeneratorTool using the base class
+class TopicsGeneratorTool(GeminiBaseTool):
     name: str = "topics_generator"
     description: str = "Generates topics and subtopics based on PDFs and a perspective"
-    gemini: Optional[GeminiChatModel] = None
-    system_instruction: Optional[str] = None
-    user_template: Optional[str] = None
-    create_topics_prompt: Optional[ChatPromptTemplate] = None
-    chain: Optional[Runnable] = None
-
-    def __init__(self):
-        super().__init__()
-        self.gemini = GeminiChatModel(
-            model_name="gemini-2.0-flash",
-            temperature=0.7,
-            mock_response=TOPICS_GENERATOR_MOCK
-        )
-        
-        self.create_topics_prompt = load_chat_prompt_from_yaml(
-            Path(__file__).parent / "create_topics.yaml",
-            default_system="Generate topics and subtopics based on the provided perspective.",
-            default_user="Perspective of analysis: {perspective}"
-        )
-        
-        # Create the LCEL chain
-        self._build_chain()
+    mock_response: str = TOPICS_GENERATOR_MOCK
+    system_instruction: str = "Generate topics and subtopics based on the provided perspective."
+    user_template: str = "Perspective of analysis: {perspective}"
     
-    def _build_chain(self):
-        """Build the LCEL chain for topic generation."""                
-        from langchain_core.runnables import RunnableLambda
-        
-        # Format input for the chain
-        def format_input(inputs):
-            return {"perspective": inputs["perspective"]}
+    def __init__(self):
+        prompt_file = Path(__file__).parent / "create_topics.yaml"
+        super().__init__(prompt_file=prompt_file)
 
-        # Process files and add them to the chain
+    def _build_chain(self):
+        """Build the LCEL chain for topic generation."""
         def process_with_files(inputs):
-            prompt_args = inputs["prompt_args"]
-            model_inputs = inputs["model_inputs"]
-            files = inputs.get("files", [])
-            
-            # Call the model with files
+            messages = self.create_messages(**inputs["model_inputs"])
             return self.gemini.invoke(
-                model_inputs, 
-                files=files
+                messages, 
+                files=inputs["files"]
             )
 
         self.chain = (
             RunnableLambda(lambda inputs: {
-                "prompt_args": inputs,
-                "model_inputs": format_input(inputs),
+                "model_inputs": {"perspective": inputs["perspective"]},
                 "files": inputs.get("files", [])
             }) |
-            {
-                "prompt_args": lambda x: x["prompt_args"],
-                "model_inputs": lambda x: self.create_topics_prompt.invoke(x["model_inputs"]),
-                "files": lambda x: x["files"]
-            } |
             RunnableLambda(process_with_files) |
             topics_parser
         )
@@ -147,13 +108,10 @@ class TopicsGeneratorTool(BaseTool):
         if not pdf_files:
             return {"topics": []}
         
-        # Upload the PDF files
-        uploaded_files = []
-        for pdf_file in pdf_files:
-            uploaded_file = self.gemini.upload_file(pdf_file, mime_type="application/pdf")
-            uploaded_files.append(uploaded_file)
+        # Use the helper method from GeminiBaseTool to upload files
+        uploaded_files = self.upload_files(pdf_files)
         
-        # Invoke the chain with files
+        # Invoke the chain with context
         return self.chain.invoke({
             "perspective": perspective,
             "files": uploaded_files
@@ -182,45 +140,27 @@ SUBTOPICS_CONSOLIDATOR_MOCK = """```json
 }
 ```"""
 
-class SubtopicsConsolidatorTool(BaseTool):
+# Modified SubtopicsConsolidatorTool using the base class
+class SubtopicsConsolidatorTool(GeminiBaseTool):
     name: str = "subtopics_consolidator"
     description: str = "Consolidates similar subtopics from multiple topic sets"
-    gemini: Optional[GeminiChatModel] = None
-    system_instruction: Optional[str] = None
-    user_template: Optional[str] = None
-    consolidate_subtopics_prompt: Optional[ChatPromptTemplate] = None
-    chain: Optional[Runnable] = None
-
-    def __init__(self):
-        super().__init__()
-        self.gemini = GeminiChatModel(
-            model_name="gemini-2.0-flash",
-            temperature=0.7,
-            mock_response=SUBTOPICS_CONSOLIDATOR_MOCK
-        )
-        
-        self.consolidate_subtopics_prompt = load_chat_prompt_from_yaml(
-            Path(__file__).parent / "consolidate_subtopics.yaml",
-            default_system="Consolidate similar subtopics from the provided topics.",
-            default_user="Consolidate the sub-topics in this JSON: {content}"
-        )
-        
-        # Create the LCEL chain
-        self._build_chain()
+    mock_response: str = SUBTOPICS_CONSOLIDATOR_MOCK
+    system_instruction: str = "Consolidate similar subtopics from the provided topics."
+    user_template: str = "Consolidate the sub-topics in this JSON: {content}"
     
+    def __init__(self):
+        prompt_file = Path(__file__).parent / "consolidate_subtopics.yaml"
+        super().__init__(prompt_file=prompt_file)
+
     def _build_chain(self):
         """Build the LCEL chain for subtopic consolidation."""
-        from langchain_core.runnables import RunnableLambda
-        
-        # Format input for the chain
-        def format_input(topics):
-            return {"content": json.dumps(topics)}
-        
-        # Build the chain
+        def process_input(content):
+            messages = self.create_messages(content=content)
+            return self.gemini.invoke(messages)
+
         self.chain = (
-            RunnableLambda(format_input) | 
-            self.consolidate_subtopics_prompt | 
-            self.gemini | 
+            RunnableLambda(lambda x: {"content": json.dumps(x)}) |
+            RunnableLambda(process_input) |
             topics_parser
         )
 
