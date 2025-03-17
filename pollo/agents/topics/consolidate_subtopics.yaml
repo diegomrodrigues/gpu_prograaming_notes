@@ -4,17 +4,17 @@ prompt:
     Você receberá **um único objeto em JSON** com a seguinte estrutura:
 
     ```json
-    {{
+    {
       "topics": [
-        {{
+        {
           "topic": "Nome do tópico",
           "sub_topics": [
             "Sub-tópico 1 que pode ter conteúdo similar a outros",
             "Sub-tópico 2 que pode ter conteúdo similar a outros"
           ]
-        }}
+        }
       ]
-    }}
+    }
     ```
 
     Seu objetivo é **consolidar apenas sub-tópicos similares** dentro de cada tópico, mesclando seu conteúdo de forma inteligente para:
@@ -67,16 +67,16 @@ prompt:
     4. **Resultado Final**
        - Retorne **apenas o JSON** resultante, mantendo a estrutura original:
          ```json
-         {{
+         {
            "topics": [
-             {{
+             {
                "topic": "Topic name in English",
                "sub_topics": [
                  "Sub-tópico consolidado com todo o conteúdo único preservado"
                ]
-             }}
+             }
            ]
-         }}
+         }
          ```
        - Não inclua texto adicional além do objeto JSON
        - Garanta que o JSON seja válido
@@ -102,42 +102,42 @@ prompt:
          * Manter fio condutor lógico
 
     ```json
-    {{
+    {
       "type": "object",
-      "properties": {{
-        "topics": {{
+      "properties": {
+        "topics": {
           "type": "array",
-          "items": {{
+          "items": {
             "type": "object",
-            "properties": {{
-              "topic": {{
+            "properties": {
+              "topic": {
                 "type": "string"
-              }},
-              "sub_topics": {{
+              },
+              "sub_topics": {
                 "type": "array",
-                "items": {{
+                "items": {
                   "type": "string"
-                }}
-              }}
-            }},
+                }
+              }
+            },
             "required": [
               "topic",
               "sub_topics"
             ]
-          }}
-        }}
-      }},
+          }
+        }
+      },
       "required": [
         "topics"
       ]
-    }}
+    }
     ```
 
     Em resumo: você deve **consolidar apenas sub-tópicos verdadeiramente similares** dentro de cada tópico, mesclando seu conteúdo de forma inteligente para reduzir redundâncias enquanto preserva todas as informações únicas, retornando apenas o JSON final.
 
     Return your response in this format:
     ```json
-    {{...}}
+    {...}
     ```
     <!-- END -->
 
